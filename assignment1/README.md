@@ -17,8 +17,8 @@ Extend the [`dg1` demo][1] in one or several of the following ways:
         on-the-fly
     -   Might need to code inner loop in a compiled language or vectorize
         for speed
-    -   Test on Burgers' equation, see [228B notes][3] for Riemann solver (but
-        don't let the shock form, it will blow up! more on this later)
+    -   Test on Burgers' equation, see [228B notes][3] for [Riemann solver][4]
+        (but don't let the shock form, it will blow up! more on this later)
 -   Extend to 2-D, for a rectangular domain with square (Cartesian) elements
     -   Need to develop some better data structures, plotting utilities, etc
     -   Can in principle use the same approach as before with precomputed
@@ -40,4 +40,5 @@ Extend the [`dg1` demo][1] in one or several of the following ways:
 
 [1]: https://nbviewer.jupyter.org/url/persson.berkeley.edu/228B/notebooks/dg1.ipynb
 [2]: https://nbviewer.jupyter.org/url/persson.berkeley.edu/228B/notebooks/meshutils.ipynb
-[3]: https://github.com/dhermes/berkeley-m273-s2016/tree/master/228B_notes
+[3]: https://github.com/dhermes/berkeley-m273-s2016/blob/master/228B_notes/lec11.pdf
+[4]: https://github.com/dhermes/berkeley-m273-s2016/blob/master/228B_notes/lec12.pdf
