@@ -1,2 +1,4 @@
-# berkeley-m273-s2016
-Work for UC Berkeley Math 273 Topics Course - Spring 2016
+# Berkeley Math 273 - Spring 2016
+
+Topics course on numerical methods for differential equations run
+by Per-Olof Persson.
