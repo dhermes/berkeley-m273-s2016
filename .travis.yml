@@ -1,13 +1,9 @@
 language: python
 sudo: false
 
-before install:
-  - mkdir -p ${HOME}/.cache/py-base
-  - export PYTHONUSERBASE=${HOME}/.cache/py-base
-
 install:
   - pip install --upgrade pip
-  - pip install --user --upgrade matplotlib numpy Sphinx
+  - pip install --upgrade matplotlib numpy Sphinx
 
 script:
   - make docs
@@ -15,4 +11,4 @@ script:
 cache:
   directories:
     - ${HOME}/.cache/pip
-    - ${HOME}/.cache/py-base
+    - ${HOME}/virtualenv/python2.7.9/lib/python2.7/site-packages
