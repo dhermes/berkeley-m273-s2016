@@ -1,11 +1,16 @@
 language: python
 sudo: false
 
+before_install:
+  - export PYTHONPATH=${PYTHONPATH}:$(pwd)
+
 install:
   - pip install --upgrade pip
   - pip install --upgrade matplotlib numpy Sphinx
 
 script:
+  - python -c 'import assignment1; print assignment1'
+  - PYTHONPATH=. python -c 'import assignment1; print assignment1'
   - sphinx-build -W -b html -d docs/_build/doctrees docs docs/_build/html
 
 cache:
