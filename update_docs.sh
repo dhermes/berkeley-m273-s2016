@@ -27,7 +27,7 @@ sphinx-build -W -b html -d docs/_build/doctrees docs docs/_build/html
 cd ${GH_PAGES_DIR}
 git rm -fr .
 # Add the new content.
-cp -R ../docs/_build/html/ .
+cp -R ../docs/_build/html/* .
 
 # Update the files push to gh-pages.
 git add .
