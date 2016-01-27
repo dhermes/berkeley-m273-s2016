@@ -5,8 +5,6 @@ help:
 	@echo '   make docs   Render Sphinx docs       '
 
 docs:
-	echo " PWD: $(shell pwd)"  # Temporary hack to diagnose Travis failure
-	echo "HOME: $(HOME)"       # Temporary hack to diagnose Travis failure
 	sphinx-apidoc --separate --force -o docs/ .
 	rm docs/modules.rst
 	rm -fr docs/_build
