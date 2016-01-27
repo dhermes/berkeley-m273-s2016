@@ -1,0 +1,13 @@
+language: python
+sudo: false
+
+install:
+  - pip install --upgrade pip
+  - pip install --upgrade matplotlib numpy Sphinx
+
+script:
+  - make docs
+
+cache:
+  directories:
+    - ${HOME}/.cache/pip
