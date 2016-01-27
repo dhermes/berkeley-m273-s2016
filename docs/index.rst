@@ -8,4 +8,4 @@ dg1
    :maxdepth: 1
    :hidden:
 
-   dg1
+   assignment1
