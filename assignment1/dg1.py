@@ -6,6 +6,63 @@ import numpy as np
 import six
 
 
+MASS_MAT_P1 = np.array([
+    [2, 1],
+    [1, 2],
+]) / 6.0
+"""Pre-computed mass matrix for :math:`p = 1`."""
+
+STIFFNESS_MAT_P1 = 0.5 * np.array([
+    [-1, -1],
+    [ 1,  1],
+])
+"""Pre-computed stiffness matrix for :math:`p = 1`."""
+
+MASS_MAT_P2 = np.array([
+    [ 4,  2, -1],
+    [ 2, 16,  2],
+    [-1,  2,  4],
+]) / 30.0
+"""Pre-computed mass matrix for :math:`p = 2`."""
+
+STIFFNESS_MAT_P2 = np.array([
+    [-3, -4,  1],
+    [ 4,  0, -4],
+    [-1,  4,  3],
+]) / 6.0
+"""Pre-computed stiffness matrix for :math:`p = 2`."""
+
+
+def get_node_points(n, p_order, h=None):
+    """Return node points to splitting unit interval for DG.
+
+    :type n: int
+    :param n: The number of intervals to divide :math:`\\left[0, 1\\right]`
+              into.
+
+    :type p_order: int
+    :param p_order: The degree of precision for the method.
+
+    :type h: float
+    :param h: (Optional) The step size ``1 / n``.
+
+    :rtype: :class:`numpy.ndarray`
+    :returns: The ``x``-values for the node points, with
+              ``p_order + 1`` rows and ``n`` columns. The columns
+              correspond to each sub-interval and the rows correspond
+              to the node points within each sub-interval.
+    """
+    if h is None:
+        h = 1.0 / n
+    interval_starts = np.linspace(0, 1 - h, n)
+    # Split the first interval [0, h] in ``p_order + 1`` points
+    first_interval = np.linspace(0, h, p_order + 1)
+    # Broadcast the values with ``first_interval`` as rows and
+    # columns as ``interval_starts``.
+    return (first_interval[:, np.newaxis] +
+            interval_starts[np.newaxis, :])
+
+
 def dg1(n, p_order, T, dt):
     """Basic dg1 solver.
 
@@ -15,7 +72,8 @@ def dg1(n, p_order, T, dt):
 
        \\frac{\\partial u}{\\partial t} + \\frac{\\partial u}{\\partial x} = 0
 
-    on the interval :math:`\\left[0, 1\\right]` with initial condition
+    on the interval :math:`\\left[0, 1\\right]` with Gaussian-like
+    initial data
 
     .. math::
 
@@ -47,34 +105,17 @@ def dg1(n, p_order, T, dt):
     :raises: :class:`ValueError <exceptions.ValueError>` if ``p_order``
              is not ``1`` or ``2``.
     """
-    h  = 1.0 / n
+    h = 1.0 / n
     nsteps = int(np.round(T / dt))
 
     if p_order == 1:
-        Mel = h / 6.0 * np.array([
-            [2, 1],
-            [1, 2],
-        ])
-        Kel = 0.5 * np.array([
-            [-1, -1],
-            [ 1,  1],
-        ])
-        x = np.array([np.linspace(0, 1 - h, n),
-                      np.linspace(h, 1, n)])
+        Mel = h * MASS_MAT_P1
+        Kel = STIFFNESS_MAT_P1
+        x = get_node_points(n, p_order, h=h)
     elif p_order == 2:
-        Mel = h / 30.0 * np.array([
-            [ 4,  2, -1],
-            [ 2, 16,  2],
-            [-1,  2,  4],
-        ])
-        Kel = np.array([
-            [-3, -4,  1],
-            [ 4,  0, -4],
-            [-1,  4,  3],
-        ]) / 6.0
-        x = np.array([np.linspace(0, 1 - h, n),
-                      np.linspace(0.5 * h, 1 - 0.5 * h, n),
-                      np.linspace(h, 1, n)])
+        Mel = h * MASS_MAT_P2
+        Kel = STIFFNESS_MAT_P2
+        x = get_node_points(n, p_order, h=h)
     else:
         raise ValueError('Error: p_order not implemented', p_order)
 
