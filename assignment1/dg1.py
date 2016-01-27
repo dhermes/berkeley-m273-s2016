@@ -6,7 +6,7 @@ import numpy as np
 import six
 
 
-def dg1(n, porder, T, dt):
+def dg1(n, p_order, T, dt):
     """Basic dg1 solver.
 
     A Discontinuous Galerkin (DG) solver to solve the 1D conservation law
@@ -29,8 +29,8 @@ def dg1(n, porder, T, dt):
     :param n: The number of intervals to divide :math:`\\left[0, 1\\right]`
               into.
 
-    :type porder: int
-    :param porder: The degree of precision for the method.
+    :type p_order: int
+    :param p_order: The degree of precision for the method.
 
     :type T: float
     :param T: The amount of time to run the solver for (starts at
@@ -44,13 +44,13 @@ def dg1(n, porder, T, dt):
               :class:`matplotlib.animation.FuncAnimation`. The
               positional arguments contain a :class:`matplotlib.figure.Figure`
               pre-populated with the initial data.
-    :raises: :class:`ValueError <exceptions.ValueError>` if ``porder``
+    :raises: :class:`ValueError <exceptions.ValueError>` if ``p_order``
              is not ``1`` or ``2``.
     """
     h  = 1.0 / n
     nsteps = int(np.round(T / dt))
 
-    if porder == 1:
+    if p_order == 1:
         Mel = h / 6.0 * np.array([
             [2, 1],
             [1, 2],
@@ -61,7 +61,7 @@ def dg1(n, porder, T, dt):
         ])
         x = np.array([np.linspace(0, 1 - h, n),
                       np.linspace(h, 1, n)])
-    elif porder == 2:
+    elif p_order == 2:
         Mel = h / 30.0 * np.array([
             [ 4,  2, -1],
             [ 2, 16,  2],
@@ -76,7 +76,7 @@ def dg1(n, porder, T, dt):
                       np.linspace(0.5 * h, 1 - 0.5 * h, n),
                       np.linspace(h, 1, n)])
     else:
-        raise ValueError('Error: porder not implemented', porder)
+        raise ValueError('Error: p_order not implemented', p_order)
 
     u = np.exp(-(x - 0.5)**2 / 0.01)
 
@@ -87,16 +87,17 @@ def dg1(n, porder, T, dt):
     plot_lines = ax.plot(x, u, 'b', lw=2)
 
     animation_args = (fig, animate)
+    wrapped_indices = np.hstack([n - 1, np.arange(n - 1)])
     animation_kwargs = {
         'frames': nsteps + 1,
         'interval': 20,
         'blit': True,
-        'fargs': [u, plot_lines, Kel, Mel, dt, n],
+        'fargs': [u, plot_lines, Kel, Mel, dt, wrapped_indices],
     }
     return animation_args, animation_kwargs
 
 
-def animate(frame_number, u, plot_lines, Kel, Mel, dt, n):
+def animate(frame_number, u, plot_lines, Kel, Mel, dt, wrapped_indices):
     """Update solution and use new solution to update plotted data.
 
     Uses the pre-computed mass matrix (``Mel``) and stiffness matrix (``Kel``)
@@ -113,7 +114,7 @@ def animate(frame_number, u, plot_lines, Kel, Mel, dt, n):
     :param frame_number: (Unused) The current frame.
 
     :type u: :class:`numpy.ndarray`
-    :param u: The current solution, with ``porder + 1`` rows and ``n``
+    :param u: The current solution, with ``p_order + 1`` rows and ``n``
               columns. The columns correspond to each interval and the
               rows correspond to the nodes of the polynomial within
               each interval.
@@ -123,25 +124,23 @@ def animate(frame_number, u, plot_lines, Kel, Mel, dt, n):
                        be updated with new solution values.
 
     :type Kel: :class:`numpy.ndarray`
-    :param Kel: The stiffness matrix, with ``porder + 1`` rows and columns.
+    :param Kel: The stiffness matrix, with ``p_order + 1`` rows and columns.
 
     :type Mel: :class:`numpy.ndarray`
     :param Mel: The mass matrix, scaled by the interval width
-                :math:`1 / n`, with ``porder + 1`` rows and columns.
+                :math:`1 / n`, with ``p_order + 1`` rows and columns.
 
     :type dt: float
     :param dt: The timestep to use in the solver.
 
-    :type n: int
-    :param n: The number of intervals :math:`\\left[0, 1\\right]` has been
-              divided into.
+    :type wrapped_indices: :class:`numpy.ndarray`
+    :param wrapped_indices: The indices ``[n - 1, 0, 1, ..., n - 2]``.
 
     :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
     :returns: List of the updated ``matplotlib`` line objects.
     """
     u_orig = u
     u0 = u
-    wrapped_indices = np.hstack([n - 1, np.arange(n - 1)])
     for irk in six.moves.xrange(4, 0, -1):
         r = np.dot(Kel, u)
         r[-1, :] -= u[-1, :]
