@@ -26,6 +26,9 @@ sphinx-build -W -b html -d docs/_build/doctrees docs docs/_build/html
 # Update gh-pages with the created docs.
 cd ${GH_PAGES_DIR}
 git rm -fr .
+# Leave the .nojekyll file intact.
+git reset HEAD .nojekyll
+git checkout .nojekyll
 # Add the new content.
 cp -R ../docs/_build/html/* .
 
