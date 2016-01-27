@@ -128,17 +128,16 @@ def dg1(n, p_order, T, dt):
     plot_lines = ax.plot(x, u, 'b', lw=2)
 
     animation_args = (fig, animate)
-    wrapped_indices = np.hstack([n - 1, np.arange(n - 1)])
     animation_kwargs = {
         'frames': nsteps + 1,
         'interval': 20,
         'blit': True,
-        'fargs': [u, plot_lines, Kel, Mel, dt, wrapped_indices],
+        'fargs': [u, plot_lines, Kel, Mel, dt],
     }
     return animation_args, animation_kwargs
 
 
-def animate(frame_number, u, plot_lines, Kel, Mel, dt, wrapped_indices):
+def animate(frame_number, u, plot_lines, Kel, Mel, dt):
     """Update solution and use new solution to update plotted data.
 
     Uses the pre-computed mass matrix (``Mel``) and stiffness matrix (``Kel``)
@@ -174,18 +173,39 @@ def animate(frame_number, u, plot_lines, Kel, Mel, dt, wrapped_indices):
     :type dt: float
     :param dt: The timestep to use in the solver.
 
-    :type wrapped_indices: :class:`numpy.ndarray`
-    :param wrapped_indices: The indices ``[n - 1, 0, 1, ..., n - 2]``.
-
     :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
     :returns: List of the updated ``matplotlib`` line objects.
     """
     u_orig = u
     u0 = u
     for irk in six.moves.xrange(4, 0, -1):
+        # u = [u0^0, u0^1, ..., u0^{n-1}]
+        #     [u1^0, u1^1, ..., u1^{n-1}]
+        #     [...                   ...]
+        #     [up^0, up^1, ..., up^{n-1}]
         r = np.dot(Kel, u)
+        # At this point, the columns of ``r`` are
+        #    r = [K u^0, K u^1, ..., K u^{n-1}]
+        # and we seek to have each column contain
+        #    K u^k + up^{k-1} e0 - up^k ep
+
+        # So the first thing we do is modify
+        #    K u^k --> K u^k - up^k ep
+        # so we just take the final row of ``u``
+        #     [up^0, up^1, ..., up^{n-1}]
+        # and subtract it from the last component of ``r``.
         r[-1, :] -= u[-1, :]
-        r[0, :] += u[-1, wrapped_indices]
+        # Then we modify
+        #    K u^k - up^k ep --> K u^k - up^k ep + up^{k-1} e0
+        # with the assumption that up^{-1} = up^{n-1}, i.e. we
+        # assume the solution is periodic, so we just roll
+        # the final row of ``u`` around to
+        #     [up^1, ..., up^{n-1}, up^0]
+        # and add it to the first component of ``r``.
+        r[0, :] += np.roll(u[-1, :], shift=1)
+        # Here, we solve M u' = K u^k + up^{k-1} e0 - up^k ep
+        # in each column of ``r`` and then use the ``u'``
+        # estimates to update the value.
         u = u0 + dt / irk * np.linalg.solve(Mel, r)
     for index, line in enumerate(plot_lines):
         line.set_ydata(u[:, index])
