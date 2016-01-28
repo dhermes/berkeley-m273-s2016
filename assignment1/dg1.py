@@ -7,6 +7,7 @@ by Per Olof-Persson.
 
 import matplotlib.pyplot as plt
 import numpy as np
+import six
 
 
 MASS_MAT_P1 = np.array([
@@ -37,6 +38,9 @@ STIFFNESS_MAT_P2 = np.array([
 
 _RK_STEPS = (4, 3, 2, 1)
 
+INTERVAL_POINTS = 10
+"""Number of points to use when plotting a polynomial on an interval."""
+
 
 def get_node_points(n, p_order, h=None):
     """Return node points to splitting unit interval for DG.
@@ -66,6 +70,69 @@ def get_node_points(n, p_order, h=None):
     # columns as ``interval_starts``.
     return (first_interval[:, np.newaxis] +
             interval_starts[np.newaxis, :])
+
+
+def polynomial_interpolate(x_vals, y_vals, num_points=INTERVAL_POINTS):
+    """Polynomial interpolation from node points.
+
+    Assumes the first and last ``x``-value are the endpoints of
+    the interval.
+
+    Using Lagrange basis polynomials we can write our polynomial as
+
+    .. math::
+
+       p(x) = \\sum_{j} y_j \\ell_j(x)
+
+    and we can compute :math:`\\ell_j(x)`` of our data without ever computing
+    the coefficients. We do this by computing all pairwise differences of
+    our ``x``-values and the interpolating values. Then we take the products
+    of these differences (leaving out one of the interpolating values).
+
+    :type x_vals: :class:`numpy.ndarray`
+    :param x_vals: List of ``x``-values that uniquely define a
+                   polynomial. The degree is one less than the number
+                   of points.
+
+    :type y_vals: :class:`numpy.ndarray`
+    :param y_vals: List of ``y``-values that uniquely define a
+                   polynomial. The degree is one less than the number
+                   of points and is expected to be the same size as
+                   ``x_vals``.
+
+    :type num_points: int
+    :param num_points: The number of points to use to represent
+                       the polynomial.
+
+    :rtype: tuple
+    :returns: Pair of :class:`numpy.ndarray` for both the ``x`` and
+              ``y`` values of the polynomial at ``num_points``
+              different points on the interval.
+    """
+    min_x = x_vals[0]
+    max_x = x_vals[-1]
+    num_x = x_vals.size
+    all_x = np.linspace(min_x, max_x, num_points)
+
+    # First compute the denominators of the Lagrange polynomials.
+    pairwise_diff = x_vals[:, np.newaxis] - x_vals[np.newaxis, :]
+    # Put 1's on the diagonal (instead of zeros) before taking product.
+    np.fill_diagonal(pairwise_diff, 1.0)
+    lagrange_denoms = np.prod(pairwise_diff, axis=1)  # Row products.
+
+    # Now compute the differences of our x-values for plotting
+    # and the x-values used to interpolate.
+    new_x_diff = all_x[:, np.newaxis] - x_vals[np.newaxis, :]
+
+    all_y = (y_vals[0] * np.prod(new_x_diff[:, 1:], axis=1) /
+             lagrange_denoms[0])
+    for index in six.moves.xrange(1, num_x):
+        curr_slice = np.hstack([new_x_diff[:, :index],
+                                new_x_diff[:, index + 1:]])
+        all_y += (y_vals[index] * np.prod(curr_slice, axis=1) /
+                  lagrange_denoms[index])
+
+    return all_x, all_y
 
 
 class DG1Solver(object):
@@ -276,8 +343,17 @@ class DG1Animate(object):
         :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
         :returns: List of the updated ``matplotlib`` line objects.
         """
-        return self.ax.plot(self.solver.x, self.solver.u,
-                            color=color, linewidth=2)
+        _, num_cols = self.solver.x.shape
+        plot_lines = []
+        for i in six.moves.xrange(num_cols):
+            x_vals = self.solver.x[:, i]
+            y_vals = self.solver.u[:, i]
+            all_x, all_y = polynomial_interpolate(x_vals, y_vals)
+            line, = self.ax.plot(all_x, all_y,
+                                 color=color, linewidth=2)
+            plot_lines.append(line)
+
+        return plot_lines
 
     def init_func(self):
         """An initialization function for the animation.
@@ -326,5 +402,8 @@ class DG1Animate(object):
                              frame_number)
         self.solver.update()
         for index, line in enumerate(self.plot_lines):
-            line.set_ydata(self.solver.u[:, index])
+            x_vals = self.solver.x[:, index]
+            y_vals = self.solver.u[:, index]
+            _, all_y = polynomial_interpolate(x_vals, y_vals)
+            line.set_ydata(all_y)
         return self.plot_lines
