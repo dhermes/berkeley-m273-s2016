@@ -72,7 +72,7 @@ def get_node_points(n, p_order, h=None):
             interval_starts[np.newaxis, :])
 
 
-def polynomial_interpolate(x_vals, y_vals, num_points=INTERVAL_POINTS):
+class PolynomialInterpolate(object):
     """Polynomial interpolation from node points.
 
     Assumes the first and last ``x``-value are the endpoints of
@@ -94,45 +94,72 @@ def polynomial_interpolate(x_vals, y_vals, num_points=INTERVAL_POINTS):
                    polynomial. The degree is one less than the number
                    of points.
 
-    :type y_vals: :class:`numpy.ndarray`
-    :param y_vals: List of ``y``-values that uniquely define a
-                   polynomial. The degree is one less than the number
-                   of points and is expected to be the same size as
-                   ``x_vals``.
-
     :type num_points: int
     :param num_points: The number of points to use to represent
                        the polynomial.
-
-    :rtype: tuple
-    :returns: Pair of :class:`numpy.ndarray` for both the ``x`` and
-              ``y`` values of the polynomial at ``num_points``
-              different points on the interval.
     """
-    min_x = x_vals[0]
-    max_x = x_vals[-1]
-    num_x = x_vals.size
-    all_x = np.linspace(min_x, max_x, num_points)
 
-    # First compute the denominators of the Lagrange polynomials.
-    pairwise_diff = x_vals[:, np.newaxis] - x_vals[np.newaxis, :]
-    # Put 1's on the diagonal (instead of zeros) before taking product.
-    np.fill_diagonal(pairwise_diff, 1.0)
-    lagrange_denoms = np.prod(pairwise_diff, axis=1)  # Row products.
+    def __init__(self, x_vals, num_points=INTERVAL_POINTS):
+        self.x_vals = x_vals
+        # Computed values.
+        min_x = x_vals[0]
+        max_x = x_vals[-1]
+        self.all_x = np.linspace(min_x, max_x, num_points)
+        self.lagrange_matrix = self.make_lagrange_matrix()
 
-    # Now compute the differences of our x-values for plotting
-    # and the x-values used to interpolate.
-    new_x_diff = all_x[:, np.newaxis] - x_vals[np.newaxis, :]
+    def make_lagrange_matrix(self):
+        """Make matrix of Lagrange interp. polys evaluated on interval.
 
-    all_y = (y_vals[0] * np.prod(new_x_diff[:, 1:], axis=1) /
-             lagrange_denoms[0])
-    for index in six.moves.xrange(1, num_x):
-        curr_slice = np.hstack([new_x_diff[:, :index],
-                                new_x_diff[:, index + 1:]])
-        all_y += (y_vals[index] * np.prod(curr_slice, axis=1) /
-                  lagrange_denoms[index])
+        :rtype: :class:`numpy.ndarray`
+        :returns: The matrix :math:`\\ell_j(x)` where the rows correspond to
+                  the ``num_points`` possible ``x``-values and the columns
+                  correspond to the ``p_order + 1`` possible ``j``-values.
+        """
+        # First compute the denominators of the Lagrange polynomials.
+        pairwise_diff = self.x_vals[:, np.newaxis] - self.x_vals[np.newaxis, :]
+        # Put 1's on the diagonal (instead of zeros) before taking product.
+        np.fill_diagonal(pairwise_diff, 1.0)
+        lagrange_denoms = np.prod(pairwise_diff, axis=1)  # Row products.
 
-    return all_x, all_y
+        num_x = self.x_vals.size
+        # Now compute the differences of our x-values for plotting
+        # and the x-values used to interpolate.
+        new_x_diff = self.all_x[:, np.newaxis] - self.x_vals[np.newaxis, :]
+        result = np.zeros((self.all_x.size, num_x))
+
+        for index in six.moves.xrange(num_x):
+            curr_slice = np.hstack([new_x_diff[:, :index],
+                                    new_x_diff[:, index + 1:]])
+            result[:, index] = (np.prod(curr_slice, axis=1) /
+                                lagrange_denoms[index])
+
+        return result
+
+    def interpolate(self, y_vals):
+        """Evaluate interpolated polynomial given ``y``-values.
+
+        We've already pre-computed the values :math:`\\ell_j(x)` for
+        all the ``x``-values we use in our interval (``num_points`` in
+        all, using the interpolating ``x``-values to compute the
+        :math:`\\ell_j(x)`). So we simply use them to compute
+
+        .. math::
+
+           p(x) = \\sum_{j} y_j \\ell_j(x)
+
+        using the :math:`y_j` from ``y_vals``.
+
+        :type y_vals: :class:`numpy.ndarray`
+        :param y_vals: 1D array of ``y``-values that uniquely define
+                       our interpolating polynomial.
+
+        :rtype: :class:`numpy.ndarray`
+        :returns: 1D array containing :math:`\\p(x)` for each ``x``-value in
+                  the interval (``num_points`` in all).
+        """
+        # Make into a column vector before applying matrix.
+        y_vals = y_vals[:, np.newaxis]
+        return self.lagrange_matrix.dot(y_vals)
 
 
 class DG1Solver(object):
@@ -322,6 +349,7 @@ class DG1Animate(object):
     def __init__(self, solver):
         self.solver = solver
         # Computed values.
+        self.poly_interp_funcs = self._get_interpolation_funcs()
         self.plot_lines = None  # Will be updated in ``init_func``.
         self.fig, self.ax = plt.subplots(1, 1)
         self._configure_axis()
@@ -334,6 +362,20 @@ class DG1Animate(object):
         self.ax.set_ylim(0 - 0.1, 1 + 0.1)
         self.ax.grid(b=True)  # b == boolean, 'on'/'off'
 
+    def _get_interpolation_funcs(self):
+        """Get polynomial interpolation objects for each interval.
+
+        :rtype: list
+        :returns: List of :class:`PolynomialInterpolate` objects, one
+                  for each sub-interval.
+        """
+        _, num_cols = self.solver.x.shape
+        interp_funcs = []
+        for i in six.moves.xrange(num_cols):
+            x_vals = self.solver.x[:, i]
+            interp_funcs.append(PolynomialInterpolate(x_vals))
+        return interp_funcs
+
     def _plot_solution(self, color):
         """Plot the solution and return the newly created lines.
 
@@ -345,11 +387,11 @@ class DG1Animate(object):
         """
         _, num_cols = self.solver.x.shape
         plot_lines = []
-        for i in six.moves.xrange(num_cols):
-            x_vals = self.solver.x[:, i]
-            y_vals = self.solver.u[:, i]
-            all_x, all_y = polynomial_interpolate(x_vals, y_vals)
-            line, = self.ax.plot(all_x, all_y,
+        for index in six.moves.xrange(num_cols):
+            interp_func = self.poly_interp_funcs[index]
+            y_vals = self.solver.u[:, index]
+            all_y = interp_func.interpolate(y_vals)
+            line, = self.ax.plot(interp_func.all_x, all_y,
                                  color=color, linewidth=2)
             plot_lines.append(line)
 
@@ -402,8 +444,8 @@ class DG1Animate(object):
                              frame_number)
         self.solver.update()
         for index, line in enumerate(self.plot_lines):
-            x_vals = self.solver.x[:, index]
+            interp_func = self.poly_interp_funcs[index]
             y_vals = self.solver.u[:, index]
-            _, all_y = polynomial_interpolate(x_vals, y_vals)
+            all_y = interp_func.interpolate(y_vals)
             line.set_ydata(all_y)
         return self.plot_lines
