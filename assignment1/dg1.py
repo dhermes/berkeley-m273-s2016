@@ -1,4 +1,8 @@
-"""Simple dg1 script from Persson."""
+"""Module for solving a 1D conservation law via DG.
+
+Adapted from a Discontinuous Galerkin (DG) solver written
+by Per Olof-Persson.
+"""
 
 
 import matplotlib.pyplot as plt
@@ -64,156 +68,6 @@ def get_node_points(n, p_order, h=None):
             interval_starts[np.newaxis, :])
 
 
-def dg1(n, p_order, T, dt):
-    """Basic dg1 solver.
-
-    A Discontinuous Galerkin (DG) solver to solve the 1D conservation law
-
-    .. math::
-
-       \\frac{\\partial u}{\\partial t} + \\frac{\\partial u}{\\partial x} = 0
-
-    on the interval :math:`\\left[0, 1\\right]` with Gaussian-like
-    initial data
-
-    .. math::
-
-       u(x, 0) = \\exp\\left(-\\left(\\frac{x - \\frac{1}{2}}{0.1}
-                             \\right)^2\\right)
-
-    Uses pre-computed mass matrix (``Mel``) and stiffness matrix (``Kel``)
-    for :math:`p = 1` and :math:`p = 2` degree polynomials.
-
-    :type n: int
-    :param n: The number of intervals to divide :math:`\\left[0, 1\\right]`
-              into.
-
-    :type p_order: int
-    :param p_order: The degree of precision for the method.
-
-    :type T: float
-    :param T: The amount of time to run the solver for (starts at
-              :math:`t = 0`.
-
-    :type dt: float
-    :param dt: The timestep to use in the solver.
-
-    :rtype: tuple
-    :returns: Pair of positional and keyword arguments to
-              :class:`matplotlib.animation.FuncAnimation`. The
-              positional arguments contain a :class:`matplotlib.figure.Figure`
-              pre-populated with the initial data.
-    :raises: :class:`ValueError <exceptions.ValueError>` if ``p_order``
-             is not ``1`` or ``2``.
-    """
-    h = 1.0 / n
-    nsteps = int(np.round(T / dt))
-
-    if p_order == 1:
-        Mel = h * MASS_MAT_P1
-        Kel = STIFFNESS_MAT_P1
-        x = get_node_points(n, p_order, h=h)
-    elif p_order == 2:
-        Mel = h * MASS_MAT_P2
-        Kel = STIFFNESS_MAT_P2
-        x = get_node_points(n, p_order, h=h)
-    else:
-        raise ValueError('Error: p_order not implemented', p_order)
-
-    u = np.exp(-(x - 0.5)**2 / 0.01)
-
-    fig = plt.figure()
-    ax = plt.axes(xlim=(0, 1), ylim=(-.1, 1.1))
-    ax.plot(x, u, 'r', lw=2)
-    plt.grid(True)
-    plot_lines = ax.plot(x, u, 'b', lw=2)
-
-    animation_args = (fig, animate)
-    animation_kwargs = {
-        'frames': nsteps + 1,
-        'interval': 20,
-        'blit': True,
-        'fargs': [u, plot_lines, Kel, Mel, dt],
-    }
-    return animation_args, animation_kwargs
-
-
-def animate(frame_number, u, plot_lines, Kel, Mel, dt):
-    """Update solution and use new solution to update plotted data.
-
-    Uses the pre-computed mass matrix (``Mel``) and stiffness matrix (``Kel``)
-    from :func:`dg1` and a modified RK4 to update the solution. This is
-    done by using the following to compute :math:`\\dot{u}` via
-
-    .. math::
-
-       M \\dot{\\mathbf{u}}^k = K \\mathbf{u}^k + u_p^{k - 1} e_0 - u_p^k e_{p}
-
-    and using it as a black box for RK4 via :math:`\\dot{u} = f(t, u)`.
-
-    :type frame_number: int
-    :param frame_number: (Unused) The current frame.
-
-    :type u: :class:`numpy.ndarray`
-    :param u: The current solution, with ``p_order + 1`` rows and ``n``
-              columns. The columns correspond to each interval and the
-              rows correspond to the nodes of the polynomial within
-              each interval.
-
-    :type plot_lines: :class:`list` of :class:`matplotlib.lines.Line2D`
-    :param plot_lines: List of ``matplotlib`` line objects which need to
-                       be updated with new solution values.
-
-    :type Kel: :class:`numpy.ndarray`
-    :param Kel: The stiffness matrix, with ``p_order + 1`` rows and columns.
-
-    :type Mel: :class:`numpy.ndarray`
-    :param Mel: The mass matrix, scaled by the interval width
-                :math:`1 / n`, with ``p_order + 1`` rows and columns.
-
-    :type dt: float
-    :param dt: The timestep to use in the solver.
-
-    :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
-    :returns: List of the updated ``matplotlib`` line objects.
-    """
-    u_orig = u
-    u0 = u
-    for irk in _RK_STEPS:
-        # u = [u0^0, u0^1, ..., u0^{n-1}]
-        #     [u1^0, u1^1, ..., u1^{n-1}]
-        #     [...                   ...]
-        #     [up^0, up^1, ..., up^{n-1}]
-        r = np.dot(Kel, u)
-        # At this point, the columns of ``r`` are
-        #    r = [K u^0, K u^1, ..., K u^{n-1}]
-        # and we seek to have each column contain
-        #    K u^k + up^{k-1} e0 - up^k ep
-
-        # So the first thing we do is modify
-        #    K u^k --> K u^k - up^k ep
-        # so we just take the final row of ``u``
-        #     [up^0, up^1, ..., up^{n-1}]
-        # and subtract it from the last component of ``r``.
-        r[-1, :] -= u[-1, :]
-        # Then we modify
-        #    K u^k - up^k ep --> K u^k - up^k ep + up^{k-1} e0
-        # with the assumption that up^{-1} = up^{n-1}, i.e. we
-        # assume the solution is periodic, so we just roll
-        # the final row of ``u`` around to
-        #     [up^1, ..., up^{n-1}, up^0]
-        # and add it to the first component of ``r``.
-        r[0, :] += np.roll(u[-1, :], shift=1)
-        # Here, we solve M u' = K u^k + up^{k-1} e0 - up^k ep
-        # in each column of ``r`` and then use the ``u'``
-        # estimates to update the value.
-        u = u0 + dt / irk * np.linalg.solve(Mel, r)
-    for index, line in enumerate(plot_lines):
-        line.set_ydata(u[:, index])
-    u_orig[:] = u  # Update the original data.
-    return plot_lines
-
-
 class DG1Solver(object):
     """Discontinuous Galerkin (DG) solver for the 1D conservation law
 
@@ -245,6 +99,9 @@ class DG1Solver(object):
 
     :type dt: float
     :param dt: The timestep to use in the solver.
+
+    :raises: :class:`ValueError <exceptions.ValueError>` if ``p_order``
+             is not ``1`` or ``2``.
     """
 
     def __init__(self, n, p_order, T, dt):
@@ -286,6 +143,8 @@ class DG1Solver(object):
         :rtype: :class:`numpy.ndarray`
         :returns: The mass matrix for the solver, with ``p_order + 1``
                   rows and columns.
+        :raises: :class:`ValueError <exceptions.ValueError>` if
+                 ``p_order`` is not ``1`` or ``2``.
         """
         if self.p_order == 1:
             return self.h * MASS_MAT_P1
@@ -303,6 +162,8 @@ class DG1Solver(object):
         :rtype: :class:`numpy.ndarray`
         :returns: The stiffness matrix for the solver, with ``p_order + 1``
                   rows and columns.
+        :raises: :class:`ValueError <exceptions.ValueError>` if
+                 ``p_order`` is not ``1`` or ``2``.
         """
         if self.p_order == 1:
             return STIFFNESS_MAT_P1
@@ -331,10 +192,9 @@ class DG1Solver(object):
            M \\dot{\\mathbf{u}}^k = K \\mathbf{u}^k + u_p^{k - 1} e_0 -
                                     u_p^k e_{p}
 
-        with the periodic assumption
-        :math:`\\mathbf{u}^{-1} = \\mathbf{u}^{n-1}`. Once we can find
-        :math:`\\dot{\\mathbf{u}}^k` we can use RK4 to compute the
-        updated value
+        with the periodic assumption :math:`u_p^{0-1} = u_p^{n-1}`.
+        Once we can find :math:`\\dot{\\mathbf{u}}^k` we can use RK4
+        to compute the updated value
 
         .. math::
 
@@ -375,7 +235,96 @@ class DG1Solver(object):
             # Here, we solve M u' = K u^k + up^{k-1} e0 - up^k ep
             # in each column of ``r`` and then use the ``u'``
             # estimates to update the value.
-            u_curr = u_prev + dt / irk * np.linalg.solve(
+            u_curr = u_prev + self.dt / irk * np.linalg.solve(
                 self.mass_mat, r)
         self.u = u_curr
         self.current_step += 1
+
+
+class DG1Animate(object):
+    """Helper for animating a solution.
+
+    Assumes the ``solver`` operates on :math:`x \\in \\left[0, 1\\right]`
+    and the solution :math:`u(x, t) \\in \\left[0, 1\\right]` (give
+    or take some noise).
+
+    :type solver: :class:`DG1Solver`
+    :param solver: The solver which computes and updates the solution.
+    """
+
+    def __init__(self, solver):
+        self.solver = solver
+        # Computed values.
+        self.plot_lines = None  # Will be updated in ``init_func``.
+        self.fig, self.ax = plt.subplots(1, 1)
+        self._configure_axis()
+        # Plot the initial data (in red) to compare against.
+        self._plot_solution('red')
+
+    def _configure_axis(self):
+        """Configure the axis for plotting."""
+        self.ax.set_xlim(0, 1)
+        self.ax.set_ylim(0 - 0.1, 1 + 0.1)
+        self.ax.grid(b=True)  # b == boolean, 'on'/'off'
+
+    def _plot_solution(self, color):
+        """Plot the solution and return the newly created lines.
+
+        :type color: str
+        :param color: The color to use in plotting the solution.
+
+        :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
+        :returns: List of the updated ``matplotlib`` line objects.
+        """
+        return self.ax.plot(self.solver.x, self.solver.u,
+                            color=color, linewidth=2)
+
+    def init_func(self):
+        """An initialization function for the animation.
+
+        Plots the initial data **and** stores the lines created.
+
+        :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
+        :returns: List of the updated ``matplotlib`` line objects,
+                  with length equal to ``n`` (coming from ``solver``).
+        """
+        # Plot the same data (in blue) and store the lines.
+        self.plot_lines = self._plot_solution('blue')
+        # For ``init_func`` with ``blit`` turned on, the initial
+        # frame should not have visible lines. See
+        # http://stackoverflow.com/q/21439489/1068170 for more info.
+        for line in self.plot_lines:
+            line.set_visible(False)
+        return self.plot_lines
+
+    def update_plot(self, frame_number):
+        """Updates the lines in the plot.
+
+        First advances the solver and then uses the updated value
+        to update the :class:`matplotlib.lines.Line2D` objects
+        associated to each interval.
+
+        :type frame_number: int
+        :param frame_number: (Unused) The current frame.
+
+        :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
+        :returns: List of the updated ``matplotlib`` line objects,
+                  with length equal to ``n`` (coming from ``solver``).
+        :raises: :class:`ValueError <exceptions.ValueError>` if the
+                 frame number doesn't make the current step on the
+                 solver.
+        """
+        if frame_number == 0:
+            # ``init_func`` creates lines that are not visible, to
+            # address http://stackoverflow.com/q/21439489/1068170.
+            # So in the initial frame, we make them visible.
+            for line in self.plot_lines:
+                line.set_visible(True)
+        if self.solver.current_step != frame_number:
+            raise ValueError('Solver current step does not match '
+                             'frame number', self.solver.current_step,
+                             frame_number)
+        self.solver.update()
+        for index, line in enumerate(self.plot_lines):
+            line.set_ydata(self.solver.u[:, index])
+        return self.plot_lines
