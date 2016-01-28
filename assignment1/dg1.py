@@ -2,6 +2,11 @@
 
 Adapted from a Discontinuous Galerkin (DG) solver written
 by Per Olof-Persson.
+
+Check out an example `notebook`_ using these utilities to
+solve the problem.
+
+.. _notebook: http://nbviewer.jupyter.org/github/dhermes/berkeley-m273-s2016/blob/master/assignment1/dg1.ipynb
 """
 
 
