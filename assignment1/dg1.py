@@ -162,8 +162,9 @@ class PolynomialInterpolate(object):
         :returns: 1D array containing :math:`\\p(x)` for each ``x``-value in
                   the interval (``num_points`` in all).
         """
-        # Make into a column vector before applying matrix.
-        y_vals = y_vals[:, np.newaxis]
+        if len(y_vals.shape) == 1:
+            # Make into a column vector before applying matrix.
+            y_vals = y_vals[:, np.newaxis]
         return self.lagrange_matrix.dot(y_vals)
 
 
@@ -354,7 +355,7 @@ class DG1Animate(object):
     def __init__(self, solver):
         self.solver = solver
         # Computed values.
-        self.poly_interp_funcs = self._get_interpolation_funcs()
+        self.poly_interp_func = self._get_interpolation_func()
         self.plot_lines = None  # Will be updated in ``init_func``.
         self.fig, self.ax = plt.subplots(1, 1)
         self._configure_axis()
@@ -367,19 +368,15 @@ class DG1Animate(object):
         self.ax.set_ylim(0 - 0.1, 1 + 0.1)
         self.ax.grid(b=True)  # b == boolean, 'on'/'off'
 
-    def _get_interpolation_funcs(self):
-        """Get polynomial interpolation objects for each interval.
+    def _get_interpolation_func(self):
+        """Get polynomial interpolation object for reference interval.
 
-        :rtype: list
-        :returns: List of :class:`PolynomialInterpolate` objects, one
-                  for each sub-interval.
+        :rtype: :class:`PolynomialInterpolate`
+        :returns: Interpolation object for the reference
         """
-        _, num_cols = self.solver.x.shape
-        interp_funcs = []
-        for i in six.moves.xrange(num_cols):
-            x_vals = self.solver.x[:, i]
-            interp_funcs.append(PolynomialInterpolate(x_vals))
-        return interp_funcs
+        # Reference ``x``-values are in the first column.
+        x_vals = self.solver.x[:, 0]
+        return PolynomialInterpolate(x_vals)
 
     def _plot_solution(self, color):
         """Plot the solution and return the newly created lines.
@@ -392,11 +389,12 @@ class DG1Animate(object):
         """
         _, num_cols = self.solver.x.shape
         plot_lines = []
+        interp_func = self.poly_interp_func
+        all_y = interp_func.interpolate(self.solver.u)
         for index in six.moves.xrange(num_cols):
-            interp_func = self.poly_interp_funcs[index]
-            y_vals = self.solver.u[:, index]
-            all_y = interp_func.interpolate(y_vals)
-            line, = self.ax.plot(interp_func.all_x, all_y,
+            x_start = self.solver.x[0, index],
+            line, = self.ax.plot(x_start + interp_func.all_x,
+                                 all_y[:, index],
                                  color=color, linewidth=2)
             plot_lines.append(line)
 
@@ -448,9 +446,7 @@ class DG1Animate(object):
                              'frame number', self.solver.current_step,
                              frame_number)
         self.solver.update()
+        all_y = self.poly_interp_func.interpolate(self.solver.u)
         for index, line in enumerate(self.plot_lines):
-            interp_func = self.poly_interp_funcs[index]
-            y_vals = self.solver.u[:, index]
-            all_y = interp_func.interpolate(y_vals)
-            line.set_ydata(all_y)
+            line.set_ydata(all_y[:, index])
         return self.plot_lines
