@@ -369,6 +369,53 @@ class DG1Solver(object):
         else:
             raise ValueError('Error: p_order not implemented', self.p_order)
 
+    def ode_func(self, u_val):
+        """Compute the right-hand side for the ODE.
+
+        When we write
+
+        .. math::
+
+           M \\dot{\\mathbf{u}}^k = K \\mathbf{u}^k + u_p^{k - 1} e_0 -
+                                    u_p^k e_{p}
+
+        we specify a RHS :math:`f(u)` via solving the system.
+
+        :type u_val: :class:`numpy.ndarray`
+        :param u_val: The input to :math:`f(u)`.
+
+        :rtype: :class:`numpy.ndarray`
+        :returns: The value of the slope function evaluated at ``u_val``.
+        """
+        # u = [u0^0, u0^1, ..., u0^{n-1}]
+        #     [u1^0, u1^1, ..., u1^{n-1}]
+        #     [...                   ...]
+        #     [up^0, up^1, ..., up^{n-1}]
+        r = np.dot(self.stiffness_mat, u_val)
+        # At this point, the columns of ``r`` are
+        #    r = [K u^0, K u^1, ..., K u^{n-1}]
+        # and we seek to have each column contain
+        #    K u^k + up^{k-1} e0 - up^k ep
+
+        # So the first thing we do is modify
+        #    K u^k --> K u^k - up^k ep
+        # so we just take the final row of ``u``
+        #     [up^0, up^1, ..., up^{n-1}]
+        # and subtract it from the last component of ``r``.
+        r[-1, :] -= u_val[-1, :]
+        # Then we modify
+        #    K u^k - up^k ep --> K u^k - up^k ep + up^{k-1} e0
+        # with the assumption that up^{-1} = up^{n-1}, i.e. we
+        # assume the solution is periodic, so we just roll
+        # the final row of ``u`` around to
+        #     [up^1, ..., up^{n-1}, up^0]
+        # and add it to the first component of ``r``.
+        r[0, :] += np.roll(u_val[-1, :], shift=1)
+        # Here, we solve M u' = K u^k + up^{k-1} e0 - up^k ep
+        # in each column of ``r`` and then use the ``u'``
+        # estimates to update the value.
+        return np.linalg.solve(self.mass_mat, r)
+
     def update(self):
         """Update the solution for a single time step.
 
@@ -405,35 +452,7 @@ class DG1Solver(object):
         #       avoid any accidental mutation.
         u_curr = self.u.copy()
         for irk in _RK_STEPS:
-            # u = [u0^0, u0^1, ..., u0^{n-1}]
-            #     [u1^0, u1^1, ..., u1^{n-1}]
-            #     [...                   ...]
-            #     [up^0, up^1, ..., up^{n-1}]
-            r = np.dot(self.stiffness_mat, u_curr)
-            # At this point, the columns of ``r`` are
-            #    r = [K u^0, K u^1, ..., K u^{n-1}]
-            # and we seek to have each column contain
-            #    K u^k + up^{k-1} e0 - up^k ep
-
-            # So the first thing we do is modify
-            #    K u^k --> K u^k - up^k ep
-            # so we just take the final row of ``u``
-            #     [up^0, up^1, ..., up^{n-1}]
-            # and subtract it from the last component of ``r``.
-            r[-1, :] -= u_curr[-1, :]
-            # Then we modify
-            #    K u^k - up^k ep --> K u^k - up^k ep + up^{k-1} e0
-            # with the assumption that up^{-1} = up^{n-1}, i.e. we
-            # assume the solution is periodic, so we just roll
-            # the final row of ``u`` around to
-            #     [up^1, ..., up^{n-1}, up^0]
-            # and add it to the first component of ``r``.
-            r[0, :] += np.roll(u_curr[-1, :], shift=1)
-            # Here, we solve M u' = K u^k + up^{k-1} e0 - up^k ep
-            # in each column of ``r`` and then use the ``u'``
-            # estimates to update the value.
-            u_curr = u_prev + self.dt / irk * np.linalg.solve(
-                self.mass_mat, r)
+            u_curr = u_prev + self.dt / irk * self.ode_func(u_curr)
         self.u = u_curr
         self.current_step += 1
 
