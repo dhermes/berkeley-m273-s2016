@@ -140,6 +140,68 @@ def find_matrices_symbolic(p_order):
     return M, K
 
 
+def low_storage_rk(ode_func, u_val, dt):
+    """Update an ODE solutuon with an order 2/4 Runge-Kutta function.
+
+    The method is based on the following Butcher array:
+
+    .. math::
+
+           \\begin{array}{c | c c c c}
+             0 &   0 &     &     &   \\\\
+           1/4 & 1/4 &   0 &     &   \\\\
+           1/3 &   0 & 1/3 &   0 &   \\\\
+           1/2 &   0 &   0 & 1/2 & 0 \\\\
+           \\hline
+               &   0 &   0 &   0 & 1
+           \\end{array}
+
+    It is advantageous because the update can be over-written at each
+    step, since updates are never re-used.
+
+    One can see that this method is order ``2`` for general
+    :math:`\\dot{u} = f(u)` by checking the order 3 node condition
+
+    .. math::
+
+       \\sum_i b_i c_i^2 = \\frac{1}{3}
+
+    However, for linear ODEs, the method is order ``4``. To see this, note
+    that the test problem :math:`\\dot{u} = \\lambda u` gives the stability
+    function
+
+    .. math::
+
+        R(z) = 1 + z + \\frac{z^2}{2} + \\frac{z^3}{3} + \\frac{z^4}{4}
+
+    which matches the Taylor series for :math:`e^z` to order ``4``.
+
+    See `Problem Set 3`_ from Persson's Math 228A for more details.
+
+    .. _Problem Set 3: http://persson.berkeley.edu/228A/ps3.pdf
+
+    :type ode_func: callable
+    :param ode_func: The RHS in the ODE :math:`\\dot{u} = f(u)`.
+
+    :type u_val: :class:`numpy.ndarray`
+    :param u_val: The input to :math:`f(u)`.
+
+    :type dt: float
+    :param dt: The timestep to use.
+
+    :rtype: :class:`numpy.ndarray`
+    :returns: The updated solution value.
+    """
+    u_prev = u_val
+    # NOTE: We may not actually need to copy this if the ``ode_func`` does
+    #       not mutate ``u_val`` in place, but we copy anyhow to avoid any
+    #       accidental mutation.
+    u_curr = u_val.copy()
+    for irk in _RK_STEPS:
+        u_curr = u_prev + dt / irk * ode_func(u_curr)
+    return u_curr
+
+
 def get_node_points(n, p_order, h=None):
     """Return node points to splitting unit interval for DG.
 
@@ -437,23 +499,10 @@ class DG1Solver(object):
                                     u_p^k e_{p}
 
         with the periodic assumption :math:`u_p^{0-1} = u_p^{n-1}`.
-        Once we can find :math:`\\dot{\\mathbf{u}}^k` we can use RK4
-        to compute the updated value
-
-        .. math::
-
-           \\mathbf{u}^k + \\frac{\\Delta t}{6} \\left(\\text{slope}_1 +
-                       2 \\text{slope}_2 + 2 \\text{slope}_3 +
-                       \\text{slope}_4\\right).
+        Once we can find :math:`\\dot{\\mathbf{u}}^k` we can use an
+        RK method (:func:`low_storage_rk`) to compute the updated value.
         """
-        u_prev = self.u
-        # NOTE: We don't actually need to copy this since the values of
-        #       ``u_curr`` aren't mutated in place, but we copy anyhow to
-        #       avoid any accidental mutation.
-        u_curr = self.u.copy()
-        for irk in _RK_STEPS:
-            u_curr = u_prev + self.dt / irk * self.ode_func(u_curr)
-        self.u = u_curr
+        self.u = low_storage_rk(self.ode_func, self.u, self.dt)
         self.current_step += 1
 
 
