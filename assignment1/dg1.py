@@ -28,16 +28,17 @@ INTERVAL_POINTS = 10
 def find_matrices_symbolic(p_order):
     """Find mass and stiffness matrices using symbolic algebra.
 
-    We do this on the reference interval [0, 1] with the points
+    We do this on the reference interval :math:`\\left[0, 1\\right]`
+    with the evenly spaced points
 
     .. math::
 
-       x_0 = 0, x_1 = \\frac{1}{p}, \\ldots, x_p = 1
+       x_0 = 0, x_1 = 1/p, \\ldots, x_p = 1
 
     and compute the polynomials :math:`\\varphi_j(x)` such that
     :math:`\\varphi_j\\left(x_i\\right) = \\delta_{ij}`. Since we
-    are using rationals, we do this directly by inverting the
-    Vandermonde matrix.
+    are using symbolic rationals numbers, we do this directly by
+    inverting the Vandermonde matrix :math:`V` such that
 
         .. math::
 
@@ -51,8 +52,9 @@ def find_matrices_symbolic(p_order):
                                      c_1 \\\\
                                    \\vdots \\\\
                                      c_p \\end{array}\\right]
+           = \\left(\\delta_{ij}\\right) = I_{p + 1}
 
-    Then uses these to compute the mass matrix
+    Then use these to compute the mass matrix
 
     .. math::
 
@@ -68,7 +70,7 @@ def find_matrices_symbolic(p_order):
     :param p_order: The degree of precision for the method.
 
     :rtype: tuple
-    :returns: Pair of mass and stiffness matrix, square
+    :returns: Pair of mass and stiffness matrices, square
               :class:`sympy.Matrix <sympy.matrices.dense.MutableDenseMatrix>`
               with rows/columns equal to ``p_order + 1``.
     """
@@ -102,13 +104,24 @@ def find_matrices_symbolic(p_order):
 
 
 def mass_and_stiffness_matrices_p1():
-    """Find mass and stiffness matrices for :math:`p = 1`.
+    """Get mass and stiffness matrices for :math:`p = 1`.
+
+    .. math::
+
+       M = \\frac{1}{6} \\left[ \\begin{array}{c c}
+                          2 & 1 \\\\
+                          1 & 2
+                        \\end{array}\\right], \\qquad
+       K = \\frac{1}{2} \\left[ \\begin{array}{c c}
+                          -1 & -1 \\\\
+                           1 &  1
+                        \\end{array}\\right]
 
     These values can be verified by :func:`find_matrices_symbolic`.
 
     :rtype: tuple
-    :returns: Pair of mass and stiffness matrix, square :class:`numpy.ndarray`
-              with rows/columns equal to 2.
+    :returns: Pair of mass and stiffness matrices, :math:`2 \\times 2`
+              :class:`numpy.ndarray`.
     """
     M = np.array([
         [2, 1],
@@ -122,13 +135,26 @@ def mass_and_stiffness_matrices_p1():
 
 
 def mass_and_stiffness_matrices_p2():
-    """Find mass and stiffness matrices for :math:`p = 2`.
+    """Get mass and stiffness matrices for :math:`p = 2`.
+
+    .. math::
+
+       M = \\frac{1}{30} \\left[ \\begin{array}{c c c}
+                            4 &  2 & -1 \\\\
+                            2 & 16 &  2 \\\\
+                           -1 &  2 &  4
+                         \\end{array}\\right], \\qquad
+       K = \\frac{1}{6} \\left[ \\begin{array}{c c c}
+                          -3 & -4 &  1 \\\\
+                           4 &  0 & -4 \\\\
+                          -1 &  4 &  3
+                        \\end{array}\\right]
 
     These values can be verified by :func:`find_matrices_symbolic`.
 
     :rtype: tuple
-    :returns: Pair of mass and stiffness matrix, square :class:`numpy.ndarray`
-              with rows/columns equal to 3.
+    :returns: Pair of mass and stiffness matrices, :math:`3 \\times 3`
+              :class:`numpy.ndarray`.
     """
     M = np.array([
         [ 4,  2, -1],
@@ -144,13 +170,28 @@ def mass_and_stiffness_matrices_p2():
 
 
 def mass_and_stiffness_matrices_p3():
-    """Find mass and stiffness matrices for :math:`p = 3`.
+    """Get mass and stiffness matrices for :math:`p = 3`.
+
+    .. math::
+
+       M = \\frac{1}{1680} \\left[ \\begin{array}{c c c c}
+                              128 &   99 &  -36 &   19 \\\\
+                               99 &  648 &  -81 &  -36 \\\\
+                              -36 &  -81 &  648 &   99 \\\\
+                               19 &  -36 &   99 &  128
+                           \\end{array}\\right], \\qquad
+       K = \\frac{1}{80} \\left[ \\begin{array}{c c c c}
+                            -40 &  -57 &   24 &   -7 \\\\
+                             57 &    0 &  -81 &   24 \\\\
+                            -24 &   81 &    0 &  -57 \\\\
+                              7 &  -24 &   57 &   40
+                         \\end{array}\\right]
 
     These values can be verified by :func:`find_matrices_symbolic`.
 
     :rtype: tuple
-    :returns: Pair of mass and stiffness matrix, square :class:`numpy.ndarray`
-              with rows/columns equal to 4.
+    :returns: Pair of mass and stiffness matrices, :math:`4 \\times 4`
+              :class:`numpy.ndarray`.
     """
     M = np.array([
         [128,  99, -36,  19],
@@ -170,16 +211,16 @@ def mass_and_stiffness_matrices_p3():
 def find_matrices(p_order):
     """Find mass and stiffness matrices.
 
-    We do this on the reference interval [0, 1] with the points
+    We do this on the reference interval :math:`\\left[0, 1\\right]`
+    with the evenly spaced points
 
     .. math::
 
-       x_0 = 0, x_1 = \\frac{1}{p}, \\ldots, x_p = 1
+       x_0 = 0, x_1 = 1/p, \\ldots, x_p = 1
 
     and compute the polynomials :math:`\\varphi_j(x)` such that
-    :math:`\\varphi_j\\left(x_i\\right) = \\delta_{ij}`. Since we
-    are using rationals, we do this directly by inverting the
-    Vandermonde matrix.
+    :math:`\\varphi_j\\left(x_i\\right) = \\delta_{ij}`. We do this directly
+    inverting the Vandermonde matrix :math:`V` such that
 
         .. math::
 
@@ -193,8 +234,9 @@ def find_matrices(p_order):
                                      c_1 \\\\
                                    \\vdots \\\\
                                      c_p \\end{array}\\right]
+           = \\left(\\delta_{ij}\\right) = I_{p + 1}
 
-    Then uses these to compute the mass matrix
+    Then use these to compute the mass matrix
 
     .. math::
 
@@ -259,7 +301,7 @@ def find_matrices(p_order):
 def low_storage_rk(ode_func, u_val, dt):
     """Update an ODE solutuon with an order 2/4 Runge-Kutta function.
 
-    The method is based on the following Butcher array:
+    The method is given by the following Butcher array:
 
     .. math::
 
@@ -272,28 +314,28 @@ def low_storage_rk(ode_func, u_val, dt):
                &   0 &   0 &   0 & 1
            \\end{array}
 
-    It is advantageous because the update can be over-written at each
-    step, since updates are never re-used.
+    It is advantageous because the updates :math:`k_j` can be over-written at
+    each step, since they are never re-used.
 
-    One can see that this method is order ``2`` for general
+    One can see that this method is **order 2** for general
     :math:`\\dot{u} = f(u)` by verifying that not all order 3 node
-    conditions are satisfied
+    conditions are satisfied. For example:
 
     .. math::
 
        \\frac{1}{3} \\neq \\sum_i b_i c_i^2 = 0 + 0 + 0 +
        1 \\cdot \\left(\\frac{1}{2}\\right)^2
 
-    However, for linear ODEs, the method is order ``4``. To see this, note
+    However, for linear ODEs, the method is **order 4**. To see this, note
     that the test problem :math:`\\dot{u} = \\lambda u` gives the stability
     function
 
     .. math::
 
         R\\left(\\lambda \\Delta t\\right) = R(z) =
-        1 + z + \\frac{z^2}{2} + \\frac{z^3}{3} + \\frac{z^4}{4}
+        1 + z + \\frac{z^2}{2} + \\frac{z^3}{6} + \\frac{z^4}{24}
 
-    which matches the Taylor series for :math:`e^z` to order ``4``.
+    which matches the Taylor series for :math:`e^z` to order 4.
 
     See `Problem Set 3`_ from Persson's Math 228A for more details.
 
@@ -332,11 +374,11 @@ def get_node_points(n, p_order, h=None):
     :param p_order: The degree of precision for the method.
 
     :type h: float
-    :param h: (Optional) The step size ``1 / n``.
+    :param h: (Optional) The step size :math:`1 / n`.
 
     :rtype: :class:`numpy.ndarray`
-    :returns: The ``x``-values for the node points, with
-              ``p_order + 1`` rows and ``n`` columns. The columns
+    :returns: The :math:`x`-values for the node points, with
+              ``p_order + 1`` rows and :math:`n` columns. The columns
               correspond to each sub-interval and the rows correspond
               to the node points within each sub-interval.
     """
@@ -354,7 +396,7 @@ def get_node_points(n, p_order, h=None):
 class PolynomialInterpolate(object):
     """Polynomial interpolation from node points.
 
-    Assumes the first and last ``x``-value are the endpoints of
+    Assumes the first and last :math:`x`-value are the endpoints of
     the interval.
 
     Using Lagrange basis polynomials we can write our polynomial as
@@ -363,13 +405,14 @@ class PolynomialInterpolate(object):
 
        p(x) = \\sum_{j} y_j \\ell_j(x)
 
-    and we can compute :math:`\\ell_j(x)`` of our data without ever computing
+    and we can compute :math:`\\ell_j(x)` of our data without ever computing
     the coefficients. We do this by computing all pairwise differences of
-    our ``x``-values and the interpolating values. Then we take the products
-    of these differences (leaving out one of the interpolating values).
+    our :math:`x`-values and the interpolating values. Then we take the
+    products of these differences (leaving out one of the interpolating
+    values).
 
     :type x_vals: :class:`numpy.ndarray`
-    :param x_vals: List of ``x``-values that uniquely define a
+    :param x_vals: List of :math:`x`-values that uniquely define a
                    polynomial. The degree is one less than the number
                    of points.
 
@@ -387,12 +430,17 @@ class PolynomialInterpolate(object):
         self.lagrange_matrix = self.make_lagrange_matrix()
 
     def make_lagrange_matrix(self):
-        """Make matrix of Lagrange interp. polys evaluated on interval.
+        """Make matrix where :math:`M_{ij} = \\ell_j(x_i)`.
+
+        This matrix contains the Lagrange interpolating polynomials evaluated
+        on the interval given by ``x_vals``. The :math:`x_i` (corresponding to
+        rows in :math:`M`) are the ``num_points`` possible :math:`x`-values in
+        ``all_x`` and the :math:`\\ell_j` (corresponding to columns in
+        :math:`M`) are the Lagrange interpolating polynomials interpolated
+        on the points in ``x_vals``.
 
         :rtype: :class:`numpy.ndarray`
-        :returns: The matrix :math:`\\ell_j(x)` where the rows correspond to
-                  the ``num_points`` possible ``x``-values and the columns
-                  correspond to the ``p_order + 1`` possible ``j``-values.
+        :returns: The matrix :math:`M`.
         """
         # First compute the denominators of the Lagrange polynomials.
         pairwise_diff = self.x_vals[:, np.newaxis] - self.x_vals[np.newaxis, :]
@@ -415,11 +463,11 @@ class PolynomialInterpolate(object):
         return result
 
     def interpolate(self, y_vals):
-        """Evaluate interpolated polynomial given ``y``-values.
+        """Evaluate interpolated polynomial given :math:`y`-values.
 
         We've already pre-computed the values :math:`\\ell_j(x)` for
-        all the ``x``-values we use in our interval (``num_points`` in
-        all, using the interpolating ``x``-values to compute the
+        all the :math:`x`-values we use in our interval (``num_points`` in
+        all, using the interpolating :math:`x`-values to compute the
         :math:`\\ell_j(x)`). So we simply use them to compute
 
         .. math::
@@ -429,12 +477,12 @@ class PolynomialInterpolate(object):
         using the :math:`y_j` from ``y_vals``.
 
         :type y_vals: :class:`numpy.ndarray`
-        :param y_vals: 1D array of ``y``-values that uniquely define
+        :param y_vals: 1D array of :math:`y`-values that uniquely define
                        our interpolating polynomial.
 
         :rtype: :class:`numpy.ndarray`
-        :returns: 1D array containing :math:`\\p(x)` for each ``x``-value in
-                  the interval (``num_points`` in all).
+        :returns: 1D array containing :math:`p(x)` for each :math:`x`-value
+                  in the interval (``num_points`` in all).
         """
         if len(y_vals.shape) == 1:
             # Make into a column vector before applying matrix.
@@ -528,8 +576,8 @@ class DG1Solver(object):
         ``p_order``.
 
         :rtype: tuple
-        :returns: Pair of mass and stiffness matric, both with ``p_order + 1``
-                  rows and columns.
+        :returns: Pair of mass and stiffness matrices, both with
+                  ``p_order + 1`` rows and columns.
         """
         if self.p_order == 1:
             M, K = mass_and_stiffness_matrices_p1()
