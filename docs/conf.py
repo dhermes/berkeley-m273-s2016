@@ -41,7 +41,8 @@ MOCK_MODULES = (
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # -- General configuration ------------------------------------------------
 
@@ -134,13 +135,14 @@ todo_include_todos = False
 # -- Options for HTML output ----------------------------------------------
 
 # We want to set the RTD theme, but not if we're on RTD.
-if os.environ.get('READTHEDOCS', None) != 'True':
+if os.environ.get('READTHEDOCS', None) == 'True':
+    # We fake our imports when readthedocs.org is building the docs.
+    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+else:
+    # Use the RTD theme when not building on read the docs.
     import sphinx_rtd_theme
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-else:
-    # We fake our imports when readthedocs.org is building the docs.
-    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # NOTE: The default value for `html_theme`  is 'alabaster'.
 

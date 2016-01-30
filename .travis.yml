@@ -1,9 +1,6 @@
 language: python
 sudo: false
 
-before_install:
-  - export PYTHONPATH=${PYTHONPATH}:$(pwd)
-
 install:
   - pip install --upgrade pip
   - pip install --upgrade matplotlib numpy Sphinx sympy
