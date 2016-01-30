@@ -12,8 +12,31 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
 import os
+import sys
+
+import mock
+
+# See
+# (http://read-the-docs.readthedocs.org/en/latest/faq.html#\
+#  i-get-import-errors-on-libraries-that-depend-on-c-modules)
+
+class Mock(mock.Mock):
+
+    @classmethod
+    def __getattr__(cls, name):
+            return Mock()
+
+
+MOCK_MODULES = (
+    'matplotlib',
+    'matplotlib.pyplot',
+    'numpy',
+    'numpy.polynomial',
+    'numpy.polynomial.legendre',
+    'numpy.polynomial.polynomial',
+    'sympy',
+)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -115,6 +138,10 @@ if os.environ.get('READTHEDOCS', None) != 'True':
     import sphinx_rtd_theme
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+else:
+    # We fake our imports when readthedocs.org is building the docs.
+    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
 # NOTE: The default value for `html_theme`  is 'alabaster'.
 
 # Theme options are theme-specific and customize the look and feel of a theme

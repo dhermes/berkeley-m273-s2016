@@ -6,7 +6,8 @@ by Per Olof-Persson.
 Check out an example `notebook`_ using these utilities to
 solve the problem.
 
-.. _notebook: http://nbviewer.jupyter.org/github/dhermes/berkeley-m273-s2016/blob/master/assignment1/dg1.ipynb
+.. _notebook: http://nbviewer.jupyter.org/github/dhermes/\
+              berkeley-m273-s2016/blob/master/assignment1/dg1.ipynb
 """
 
 
@@ -17,48 +18,6 @@ from numpy.polynomial import polynomial
 import six
 import sympy
 
-
-MASS_MAT_P1 = np.array([
-    [2, 1],
-    [1, 2],
-]) / 6.0
-"""Pre-computed mass matrix for :math:`p = 1`."""
-
-STIFFNESS_MAT_P1 = 0.5 * np.array([
-    [-1, -1],
-    [ 1,  1],
-])
-"""Pre-computed stiffness matrix for :math:`p = 1`."""
-
-MASS_MAT_P2 = np.array([
-    [ 4,  2, -1],
-    [ 2, 16,  2],
-    [-1,  2,  4],
-]) / 30.0
-"""Pre-computed mass matrix for :math:`p = 2`."""
-
-STIFFNESS_MAT_P2 = np.array([
-    [-3, -4,  1],
-    [ 4,  0, -4],
-    [-1,  4,  3],
-]) / 6.0
-"""Pre-computed stiffness matrix for :math:`p = 2`."""
-
-MASS_MAT_P3 = np.array([
-    [128,  99, -36,  19],
-    [ 99, 648, -81, -36],
-    [-36, -81, 648,  99],
-    [ 19, -36,  99, 128],
-]) / 1680.0
-"""Pre-computed mass matrix for :math:`p = 3`."""
-
-STIFFNESS_MAT_P3 = np.array([
-    [-40, -57,  24,  -7],
-    [ 57,   0, -81,  24],
-    [-24,  81,   0, -57],
-    [  7, -24,  57,  40],
-]) / 80.0
-"""Pre-computed stiffness matrix for :math:`p = 3`."""
 
 _RK_STEPS = (4, 3, 2, 1)
 
@@ -139,6 +98,72 @@ def find_matrices_symbolic(p_order):
                 M[j, i] = M[i, j]
                 K[j, i] = -K[i, j]
 
+    return M, K
+
+
+def mass_and_stiffness_matrices_p1():
+    """Find mass and stiffness matrices for :math:`p = 1`.
+
+    These values can be verified by :func:`find_matrices_symbolic`.
+
+    :rtype: tuple
+    :returns: Pair of mass and stiffness matrix, square :class:`numpy.ndarray`
+              with rows/columns equal to 2.
+    """
+    M = np.array([
+        [2, 1],
+        [1, 2],
+    ]) / 6.0
+    K = np.array([
+        [-1, -1],
+        [ 1,  1],
+    ]) / 2.0
+    return M, K
+
+
+def mass_and_stiffness_matrices_p2():
+    """Find mass and stiffness matrices for :math:`p = 2`.
+
+    These values can be verified by :func:`find_matrices_symbolic`.
+
+    :rtype: tuple
+    :returns: Pair of mass and stiffness matrix, square :class:`numpy.ndarray`
+              with rows/columns equal to 3.
+    """
+    M = np.array([
+        [ 4,  2, -1],
+        [ 2, 16,  2],
+        [-1,  2,  4],
+    ]) / 30.0
+    K = np.array([
+        [-3, -4,  1],
+        [ 4,  0, -4],
+        [-1,  4,  3],
+    ]) / 6.0
+    return M, K
+
+
+def mass_and_stiffness_matrices_p3():
+    """Find mass and stiffness matrices for :math:`p = 3`.
+
+    These values can be verified by :func:`find_matrices_symbolic`.
+
+    :rtype: tuple
+    :returns: Pair of mass and stiffness matrix, square :class:`numpy.ndarray`
+              with rows/columns equal to 4.
+    """
+    M = np.array([
+        [128,  99, -36,  19],
+        [ 99, 648, -81, -36],
+        [-36, -81, 648,  99],
+        [ 19, -36,  99, 128],
+    ]) / 1680.0
+    K = np.array([
+        [-40, -57,  24,  -7],
+        [ 57,   0, -81,  24],
+        [-24,  81,   0, -57],
+        [  7, -24,  57,  40],
+    ]) / 80.0
     return M, K
 
 
@@ -432,10 +457,6 @@ class DG1Solver(object):
        u(x, 0) = \\exp\\left(-\\left(\\frac{x - \\frac{1}{2}}{0.1}
                              \\right)^2\\right)
 
-    Uses pre-computed mass matrix and stiffness matrix for :math:`p = 1`,
-    :math:`p = 2` and :math:`p = 3` degree polynomials and computes
-    the matrices on the fly for larger :math:`p`.
-
     We represent our solution via the :math:`(p + 1) \\times n` rectangular
     matrix:
 
@@ -477,7 +498,7 @@ class DG1Solver(object):
         self.h = 1.0 / self.n
         self.x = get_node_points(self.n, self.p_order, h=self.h)
         self.u = self._get_initial_data()
-        M, K = self._get_mass_and_stiffness_matrices()
+        M, K = self.get_mass_and_stiffness_matrices()
         self.mass_mat = M
         self.stiffness_mat = K
 
@@ -496,26 +517,30 @@ class DG1Solver(object):
         """
         return np.exp(-(self.x - 0.5)**2 / 0.01)
 
-    def _get_mass_and_stiffness_matrices(self):
+    def get_mass_and_stiffness_matrices(self):
         """Get the mass and stiffness matrices for the current solver.
 
+        Uses pre-computed mass matrix and stiffness matrix for :math:`p = 1`,
+        :math:`p = 2` and :math:`p = 3` degree polynomials and computes
+        the matrices on the fly for larger :math:`p`.
+
         Depends on the sub-interval width ``h`` and the order of accuracy
-        ``p_order``. Comes from the pre-computed constant matrices in
-        the current module.
+        ``p_order``.
 
         :rtype: tuple
         :returns: Pair of mass and stiffness matric, both with ``p_order + 1``
                   rows and columns.
         """
         if self.p_order == 1:
-            return self.h * MASS_MAT_P1, STIFFNESS_MAT_P1
+            M, K = mass_and_stiffness_matrices_p1()
         elif self.p_order == 2:
-            return self.h * MASS_MAT_P2, STIFFNESS_MAT_P2
+            M, K = mass_and_stiffness_matrices_p2()
         elif self.p_order == 3:
-            return self.h * MASS_MAT_P3, STIFFNESS_MAT_P3
+            M, K = mass_and_stiffness_matrices_p3()
         else:
             M, K = find_matrices(p_order)
-            return self.h * M, K
+
+        return self.h * M, K
 
     def ode_func(self, u_val):
         """Compute the right-hand side for the ODE.
