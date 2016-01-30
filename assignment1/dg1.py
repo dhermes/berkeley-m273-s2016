@@ -12,6 +12,8 @@ solve the problem.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.polynomial import legendre
+from numpy.polynomial import polynomial
 import six
 import sympy
 
@@ -140,6 +142,95 @@ def find_matrices_symbolic(p_order):
     return M, K
 
 
+def find_matrices(p_order):
+    """Find mass and stiffness matrices.
+
+    We do this on the reference interval [0, 1] with the points
+
+    .. math::
+
+       x_0 = 0, x_1 = \\frac{1}{p}, \\ldots, x_p = 1
+
+    and compute the polynomials :math:`\\varphi_j(x)` such that
+    :math:`\\varphi_j\\left(x_i\\right) = \\delta_{ij}`. Since we
+    are using rationals, we do this directly by inverting the
+    Vandermonde matrix.
+
+        .. math::
+
+           \\left[ \\begin{array}{c c c c}
+                    1 & x_0 & \\cdots & x_0^p \\\\
+                    1 & x_1 & \\cdots & x_1^p \\\\
+                    \\vdots & & & \\vdots \\\\
+                    1 & x_p & \\cdots & x_p^p
+                    \\end{array}\\right]
+           \\left[ \\begin{array}{c} c_0 \\\\
+                                     c_1 \\\\
+                                   \\vdots \\\\
+                                     c_p \\end{array}\\right]
+
+    Then uses these to compute the mass matrix
+
+    .. math::
+
+        M_{ij} = \\int_0^1 \\varphi_i(x) \\varphi_j(x) \\, dx
+
+    and the stiffness matrix
+
+    .. math::
+
+        K_{ij} = \\int_0^1 \\varphi_i'(x) \\varphi_j(x) \\, dx
+
+    This method uses Gaussian quadrature to evaluate the integrals.
+    The largest degree integrand :math:`\\varphi_i \\varphi_j` has
+    degree :math:`2 p` so we use :math:`n = p + 1` points to ensure
+    that the quadrature is exact.
+
+    :type p_order: int
+    :param p_order: The degree of precision for the method.
+
+    :rtype: tuple
+    :returns: Pair of mass and stiffness matrix, square :class:`numpy.ndarray`
+              with rows/columns equal to ``p_order + 1``.
+    """
+    num_leg = p_order + 1
+    leg_pts, leg_weights = legendre.leggauss(num_leg)
+    # Shift points and weights from [-1, 1] to [0, 1]
+    leg_pts += 1
+    leg_pts *= 0.5
+    leg_weights *= 0.5
+
+    # Now create the Vandermonde matrix and invert.
+    x_vals = np.arange(p_order + 1, dtype=np.float64) / p_order
+    V = np.zeros((p_order + 1, p_order + 1))
+    for i in six.moves.xrange(p_order + 1):
+        for j in six.moves.xrange(p_order + 1):
+            V[i, j] = x_vals[i]**j
+    coeff_mat = np.linalg.inv(V)
+
+    # Evaluate the PHI_i at the Legendre points.
+    phi_vals = polynomial.polyval(leg_pts, coeff_mat)
+    # The rows correspond to the polynomials while the
+    # columns correspond to the values in ``leg_pts``.
+
+    # Populate the mass and stiffness matrices.
+    M = np.zeros((p_order + 1, p_order + 1))
+    K = np.zeros((p_order + 1, p_order + 1))
+    for i in six.moves.xrange(p_order + 1):
+        phi_i = phi_vals[i, :]
+        phi_i_prime = polynomial.polyval(
+            leg_pts, polynomial.polyder(coeff_mat[:, i]))
+        for j in six.moves.xrange(i, p_order + 1):
+            phi_j = phi_vals[j, :]
+            M[i, j] = (phi_i * phi_j).dot(leg_weights)
+            K[i, j] = (phi_i_prime * phi_j).dot(leg_weights)
+            if j > i:
+                M[j, i] = M[i, j]
+                K[j, i] = -K[i, j]
+
+    return M, K
+
+
 def low_storage_rk(ode_func, u_val, dt):
     """Update an ODE solutuon with an order 2/4 Runge-Kutta function.
 
@@ -160,11 +251,13 @@ def low_storage_rk(ode_func, u_val, dt):
     step, since updates are never re-used.
 
     One can see that this method is order ``2`` for general
-    :math:`\\dot{u} = f(u)` by checking the order 3 node condition
+    :math:`\\dot{u} = f(u)` by verifying that not all order 3 node
+    conditions are satisfied
 
     .. math::
 
-       \\sum_i b_i c_i^2 = \\frac{1}{3}
+       \\frac{1}{3} \\neq \\sum_i b_i c_i^2 = 0 + 0 + 0 +
+       1 \\cdot \\left(\\frac{1}{2}\\right)^2
 
     However, for linear ODEs, the method is order ``4``. To see this, note
     that the test problem :math:`\\dot{u} = \\lambda u` gives the stability
@@ -172,7 +265,8 @@ def low_storage_rk(ode_func, u_val, dt):
 
     .. math::
 
-        R(z) = 1 + z + \\frac{z^2}{2} + \\frac{z^3}{3} + \\frac{z^4}{4}
+        R\\left(\\lambda \\Delta t\\right) = R(z) =
+        1 + z + \\frac{z^2}{2} + \\frac{z^3}{3} + \\frac{z^4}{4}
 
     which matches the Taylor series for :math:`e^z` to order ``4``.
 
@@ -338,8 +432,24 @@ class DG1Solver(object):
        u(x, 0) = \\exp\\left(-\\left(\\frac{x - \\frac{1}{2}}{0.1}
                              \\right)^2\\right)
 
-    Uses pre-computed mass matrix (``Mel``) and stiffness matrix (``Kel``)
-    for :math:`p = 1` and :math:`p = 2` degree polynomials.
+    Uses pre-computed mass matrix and stiffness matrix for :math:`p = 1`,
+    :math:`p = 2` and :math:`p = 3` degree polynomials and computes
+    the matrices on the fly for larger :math:`p`.
+
+    We represent our solution via the :math:`(p + 1) \\times n` rectangular
+    matrix:
+
+        .. math::
+
+           \\mathbf{u} = \\left[ \\begin{array}{c c c c}
+                      u_0^1 & u_0^2 & \\cdots & u_0^n \\\\
+                      u_1^1 & u_1^2 & \\cdots & u_1^n \\\\
+                    \\vdots & & \\ddots & \\vdots \\\\
+                      u_p^1 & u_p^2 & \\cdots & u_p^n \\\\
+                    \\end{array}\\right]
+
+    where each column represents one of :math:`n` sub-intervals and each row
+    represents one of the :math:`p + 1` node points within each sub-interval.
 
     :type n: int
     :param n: The number of intervals to divide :math:`\\left[0, 1\\right]`
@@ -354,9 +464,6 @@ class DG1Solver(object):
 
     :type dt: float
     :param dt: The timestep to use in the solver.
-
-    :raises: :class:`ValueError <exceptions.ValueError>` if ``p_order``
-             is not ``1`` or ``2``.
     """
 
     def __init__(self, n, p_order, T, dt):
@@ -370,8 +477,9 @@ class DG1Solver(object):
         self.h = 1.0 / self.n
         self.x = get_node_points(self.n, self.p_order, h=self.h)
         self.u = self._get_initial_data()
-        self.mass_mat = self._get_mass_matrix()
-        self.stiffness_mat = self._get_stiffness_matrix()
+        M, K = self._get_mass_and_stiffness_matrices()
+        self.mass_mat = M
+        self.stiffness_mat = K
 
     def _get_initial_data(self):
         """Get the initial solution data.
@@ -388,48 +496,26 @@ class DG1Solver(object):
         """
         return np.exp(-(self.x - 0.5)**2 / 0.01)
 
-    def _get_mass_matrix(self):
-        """Get the mass matrix for the current solver.
+    def _get_mass_and_stiffness_matrices(self):
+        """Get the mass and stiffness matrices for the current solver.
 
         Depends on the sub-interval width ``h`` and the order of accuracy
         ``p_order``. Comes from the pre-computed constant matrices in
         the current module.
 
-        :rtype: :class:`numpy.ndarray`
-        :returns: The mass matrix for the solver, with ``p_order + 1``
+        :rtype: tuple
+        :returns: Pair of mass and stiffness matric, both with ``p_order + 1``
                   rows and columns.
-        :raises: :class:`ValueError <exceptions.ValueError>` if
-                 ``p_order`` is not ``1``, ``2`` or ``3``.
         """
         if self.p_order == 1:
-            return self.h * MASS_MAT_P1
+            return self.h * MASS_MAT_P1, STIFFNESS_MAT_P1
         elif self.p_order == 2:
-            return self.h * MASS_MAT_P2
+            return self.h * MASS_MAT_P2, STIFFNESS_MAT_P2
         elif self.p_order == 3:
-            return self.h * MASS_MAT_P3
+            return self.h * MASS_MAT_P3, STIFFNESS_MAT_P3
         else:
-            raise ValueError('Error: p_order not implemented', self.p_order)
-
-    def _get_stiffness_matrix(self):
-        """Get the stiffness matrix for the current solver.
-
-        Depends on the order of accuracy ``p_order``. Comes from the
-        pre-computed constant matrices in the current module.
-
-        :rtype: :class:`numpy.ndarray`
-        :returns: The stiffness matrix for the solver, with ``p_order + 1``
-                  rows and columns.
-        :raises: :class:`ValueError <exceptions.ValueError>` if
-                 ``p_order`` is not ``1``, ``2`` or ``3``.
-        """
-        if self.p_order == 1:
-            return STIFFNESS_MAT_P1
-        elif self.p_order == 2:
-            return STIFFNESS_MAT_P2
-        elif self.p_order == 3:
-            return STIFFNESS_MAT_P3
-        else:
-            raise ValueError('Error: p_order not implemented', self.p_order)
+            M, K = find_matrices(p_order)
+            return self.h * M, K
 
     def ode_func(self, u_val):
         """Compute the right-hand side for the ODE.
@@ -438,8 +524,14 @@ class DG1Solver(object):
 
         .. math::
 
-           M \\dot{\\mathbf{u}}^k = K \\mathbf{u}^k + u_p^{k - 1} e_0 -
-                                    u_p^k e_{p}
+           M \\dot{\\mathbf{u}} = K \\mathbf{u} +
+           \\left[ \\begin{array}{c c c c c}
+                      u_p^2 &   u_p^3 & \\cdots &      u_p^n & u_p^1   \\\\
+                          0 &       0 & \\cdots &          0 & 0       \\\\
+                    \\vdots & \\vdots & \\ddots &    \\vdots & \\vdots \\\\
+                          0 &       0 & \\cdots &          0 & 0       \\\\
+                     -u_p^1 &  -u_p^2 & \\cdots & -u_p^{n-1} & -u_p^n  \\\\
+                    \\end{array}\\right]
 
         we specify a RHS :math:`f(u)` via solving the system.
 
@@ -449,17 +541,9 @@ class DG1Solver(object):
         :rtype: :class:`numpy.ndarray`
         :returns: The value of the slope function evaluated at ``u_val``.
         """
-        # u = [u0^0, u0^1, ..., u0^{n-1}]
-        #     [u1^0, u1^1, ..., u1^{n-1}]
-        #     [...                   ...]
-        #     [up^0, up^1, ..., up^{n-1}]
         r = np.dot(self.stiffness_mat, u_val)
-        # At this point, the columns of ``r`` are
-        #    r = [K u^0, K u^1, ..., K u^{n-1}]
-        # and we seek to have each column contain
-        #    K u^k + up^{k-1} e0 - up^k ep
 
-        # So the first thing we do is modify
+        # First we modify
         #    K u^k --> K u^k - up^k ep
         # so we just take the final row of ``u``
         #     [up^0, up^1, ..., up^{n-1}]
@@ -473,34 +557,14 @@ class DG1Solver(object):
         #     [up^1, ..., up^{n-1}, up^0]
         # and add it to the first component of ``r``.
         r[0, :] += np.roll(u_val[-1, :], shift=1)
-        # Here, we solve M u' = K u^k + up^{k-1} e0 - up^k ep
-        # in each column of ``r`` and then use the ``u'``
-        # estimates to update the value.
         return np.linalg.solve(self.mass_mat, r)
 
     def update(self):
         """Update the solution for a single time step.
 
-        For each sub-interval :math:`k` of :math:`\\left[0, 1\\right]`, we
-        use the current solution
-
-        .. math::
-
-           \\mathbf{u}^k = \\left[ \\begin{array}{c} u_0^k \\\\
-                                   u_1^k \\\\
-                                   \\vdots \\\\
-                                   u_p^k \\end{array}\\right]
-
-        and update it via
-
-        .. math::
-
-           M \\dot{\\mathbf{u}}^k = K \\mathbf{u}^k + u_p^{k - 1} e_0 -
-                                    u_p^k e_{p}
-
-        with the periodic assumption :math:`u_p^{0-1} = u_p^{n-1}`.
-        Once we can find :math:`\\dot{\\mathbf{u}}^k` we can use an
-        RK method (:func:`low_storage_rk`) to compute the updated value.
+        We use :meth:`ode_func` to compute :math:`\\dot{u} = f(u)` and
+        pair it with an RK method (:func:`low_storage_rk`) to compute
+        the updated value.
         """
         self.u = low_storage_rk(self.ode_func, self.u, self.dt)
         self.current_step += 1
@@ -550,7 +614,7 @@ class DG1Animate(object):
         :param color: The color to use in plotting the solution.
 
         :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
-        :returns: List of the updated ``matplotlib`` line objects.
+        :returns: List of the updated matplotlib line objects.
         """
         _, num_cols = self.solver.x.shape
         plot_lines = []
@@ -571,8 +635,8 @@ class DG1Animate(object):
         Plots the initial data **and** stores the lines created.
 
         :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
-        :returns: List of the updated ``matplotlib`` line objects,
-                  with length equal to ``n`` (coming from ``solver``).
+        :returns: List of the updated matplotlib line objects,
+                  with length equal to :math:`n` (coming from ``solver``).
         """
         # Plot the same data (in blue) and store the lines.
         self.plot_lines = self._plot_solution('blue')
@@ -594,8 +658,8 @@ class DG1Animate(object):
         :param frame_number: (Unused) The current frame.
 
         :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
-        :returns: List of the updated ``matplotlib`` line objects,
-                  with length equal to ``n`` (coming from ``solver``).
+        :returns: List of the updated matplotlib line objects,
+                  with length equal to :math:`n` (coming from ``solver``).
         :raises: :class:`ValueError <exceptions.ValueError>` if the
                  frame number doesn't make the current step on the
                  solver.
