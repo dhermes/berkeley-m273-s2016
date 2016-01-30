@@ -3,7 +3,7 @@ sudo: false
 
 install:
   - pip install --upgrade pip
-  - pip install --upgrade matplotlib numpy Sphinx sympy
+  - pip install --upgrade numpy Sphinx sympy
 
 script:
   - ./update_docs.sh

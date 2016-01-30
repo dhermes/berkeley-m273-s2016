@@ -11,7 +11,6 @@ solve the problem.
 """
 
 
-import matplotlib.pyplot as plt
 import numpy as np
 from numpy.polynomial import legendre
 from numpy.polynomial import polynomial
@@ -129,7 +128,7 @@ def mass_and_stiffness_matrices_p1():
     ]) / 6.0
     K = np.array([
         [-1, -1],
-        [ 1,  1],
+        [1, 1],
     ]) / 2.0
     return M, K
 
@@ -157,14 +156,14 @@ def mass_and_stiffness_matrices_p2():
               :class:`numpy.ndarray`.
     """
     M = np.array([
-        [ 4,  2, -1],
-        [ 2, 16,  2],
-        [-1,  2,  4],
+        [4, 2, -1],
+        [2, 16, 2],
+        [-1, 2, 4],
     ]) / 30.0
     K = np.array([
-        [-3, -4,  1],
-        [ 4,  0, -4],
-        [-1,  4,  3],
+        [-3, -4, 1],
+        [4, 0, -4],
+        [-1, 4, 3],
     ]) / 6.0
     return M, K
 
@@ -194,16 +193,16 @@ def mass_and_stiffness_matrices_p3():
               :class:`numpy.ndarray`.
     """
     M = np.array([
-        [128,  99, -36,  19],
-        [ 99, 648, -81, -36],
-        [-36, -81, 648,  99],
-        [ 19, -36,  99, 128],
+        [128, 99, -36, 19],
+        [99, 648, -81, -36],
+        [-36, -81, 648, 99],
+        [19, -36, 99, 128],
     ]) / 1680.0
     K = np.array([
-        [-40, -57,  24,  -7],
-        [ 57,   0, -81,  24],
-        [-24,  81,   0, -57],
-        [  7, -24,  57,  40],
+        [-40, -57, 24, -7],
+        [57, 0, -81, 24],
+        [-24, 81, 0, -57],
+        [7, -24, 57, 40],
     ]) / 80.0
     return M, K
 
@@ -652,14 +651,35 @@ class DG1Animate(object):
 
     :type solver: :class:`DG1Solver`
     :param solver: The solver which computes and updates the solution.
+
+    :type fig: :class:`matplotlib.figure.Figure`
+    :param fig: (Optional) A figure to use for plotting. Intended to be passed
+                when creating a :class:`matplotlib.animation.FuncAnimation`.
+
+    :type ax: :class:`matplotlib.artist.Artist`
+    :param ax: (Optional) An axis to be used for plotting.
+
+    :raises: :class:`ValueError <exceptions.ValueError>` if one of ``fig``
+             or ``ax`` is passed, but not both.
     """
 
-    def __init__(self, solver):
+    def __init__(self, solver, fig=None, ax=None):
         self.solver = solver
         # Computed values.
         self.poly_interp_func = self._get_interpolation_func()
         self.plot_lines = None  # Will be updated in ``init_func``.
-        self.fig, self.ax = plt.subplots(1, 1)
+        self.fig = fig
+        self.ax = ax
+        # Give defaults for fig and ax if not set.
+        if self.fig is None:
+            if self.ax is not None:
+                raise ValueError('Received an axis but no figure.')
+            import matplotlib.pyplot as plt
+            self.fig, self.ax = plt.subplots(1, 1)
+        # At this point both fig and ax should be set, but if fig
+        # was not None, then it's possible ax **was** None.
+        if self.ax is None:
+            raise ValueError('Received a figure but no axis.')
         self._configure_axis()
         # Plot the initial data (in red) to compare against.
         self._plot_solution('red')
