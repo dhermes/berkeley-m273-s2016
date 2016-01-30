@@ -442,11 +442,11 @@ class DG1Solver(object):
         .. math::
 
            \\mathbf{u} = \\left[ \\begin{array}{c c c c}
-                      u_0^1 & u_0^2 & \\cdots & u_0^n \\\\
-                      u_1^1 & u_1^2 & \\cdots & u_1^n \\\\
-                    \\vdots & & \\ddots & \\vdots \\\\
-                      u_p^1 & u_p^2 & \\cdots & u_p^n \\\\
-                    \\end{array}\\right]
+                 u_0^1 &   u_0^2 & \\cdots &   u_0^n \\\\
+                 u_1^1 &   u_1^2 & \\cdots &   u_1^n \\\\
+               \\vdots & \\vdots & \\ddots & \\vdots \\\\
+                 u_p^1 &   u_p^2 & \\cdots &   u_p^n
+               \\end{array}\\right]
 
     where each column represents one of :math:`n` sub-intervals and each row
     represents one of the :math:`p + 1` node points within each sub-interval.
@@ -492,7 +492,7 @@ class DG1Solver(object):
                                  \\right)^2\\right)
 
         :rtype: :class:`numpy.ndarray`
-        :returns: The ``u``-values at each point in ``x``.
+        :returns: The :math:`u`-values at each point in :math:`x`.
         """
         return np.exp(-(self.x - 0.5)**2 / 0.01)
 
