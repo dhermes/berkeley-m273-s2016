@@ -14,8 +14,6 @@ script:
   - tox -e py34
   - tox -e lint
   - tox -e docs
-
-after_success:
   - tox -e coveralls
 
 cache:
