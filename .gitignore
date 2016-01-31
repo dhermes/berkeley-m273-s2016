@@ -20,8 +20,19 @@ lib
 lib64
 __pycache__
 
-.ipynb_checkpoints/
-docs/_build
-.DS_Store
-scripts/pylintrc_reduced
+# Unit test / coverage reports
+.coverage
 .tox
+nosetests.xml
+
+# Make sure a generated file isn't accidentally committed.
+scripts/pylintrc_reduced
+
+# Built documentation
+docs/_build
+
+# IPython/Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# OS X system file(s)
+.DS_Store
