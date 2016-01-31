@@ -6,7 +6,7 @@ install:
   - pip install --upgrade numpy Sphinx sympy
 
 script:
-  - ./update_docs.sh
+  - make docs
 
 cache:
   directories:
