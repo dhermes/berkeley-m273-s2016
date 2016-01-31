@@ -214,3 +214,63 @@ class Test_find_matrices(unittest.TestCase):
         self.assertTrue(isinstance(stiffness_mat, np.ndarray))
         self.assertTrue(np.allclose(mass_mat, expected_mass_mat))
         self.assertTrue(np.allclose(stiffness_mat, expected_stiffness_mat))
+
+
+class Test_low_storage_rk(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(ode_func, u_val, dt):
+        from assignment1.dg1 import low_storage_rk
+        return low_storage_rk(ode_func, u_val, dt)
+
+    @staticmethod
+    def _sympy_copyable_symbol():
+        import sympy
+
+        class DoNothingCopy(sympy.Symbol):
+
+            def copy(self):
+                return self
+
+        return DoNothingCopy
+
+    def test_symbolic_ode_func(self):
+        import sympy
+
+        dt = sympy.Symbol('dt')
+        u_val = self._sympy_copyable_symbol()('u')
+        ode_func = sympy.Function('f')
+
+        # Check that the linear method acts as truncated exponential.
+        result = self._call_func_under_test(ode_func, u_val, dt)
+        val0 = u_val
+        val1 = u_val + dt/4 * ode_func(val0)
+        val2 = u_val + dt/3 * ode_func(val1)
+        val3 = u_val + dt/2 * ode_func(val2)
+        val4 = u_val + dt * ode_func(val3)
+        self.assertEqual(result, val4)
+
+    def test_matches_exponential(self):
+        import sympy
+
+        dt, lambda_ = sympy.symbols('lambda, dt')
+        u_val = self._sympy_copyable_symbol()('u')
+
+        ode_called = []
+
+        def mock_ode_func(value):
+            ode_called.append(value)
+            return lambda_ * value
+
+        # Check that the linear method acts as truncated exponential.
+        result = self._call_func_under_test(mock_ode_func, u_val, dt)
+        z = dt * lambda_
+        expected_result = u_val * (1 + z + z**2/2 + z**3/6 + z**4/24)
+        self.assertEqual(result.expand(), expected_result.expand())
+
+        # Check that the terms are built up as described in the Butcher array.
+        self.assertEqual(ode_called[0], u_val)
+        expected_called = u_val
+        for called_val, irk in zip(ode_called[1:], (4, 3, 2, 1)):
+            expected_called = u_val + z/irk * expected_called
+            self.assertEqual(called_val.expand(), expected_called.expand())

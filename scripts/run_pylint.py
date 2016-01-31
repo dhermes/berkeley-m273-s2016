@@ -34,6 +34,9 @@ TEST_RC = os.path.join(SCRIPTS_DIR, 'pylintrc_reduced')
 TEST_DISABLED_MESSAGES = [
     'invalid-name',
     'missing-docstring',
+    'not-callable',
+    'redefined-variable-type',
+    'too-many-ancestors',
 ]
 TEST_RC_ADDITIONS = {
     'MESSAGES CONTROL': {
