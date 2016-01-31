@@ -274,3 +274,41 @@ class Test_low_storage_rk(unittest.TestCase):
         for called_val, irk in zip(ode_called[1:], (4, 3, 2, 1)):
             expected_called = u_val + z/irk * expected_called
             self.assertEqual(called_val.expand(), expected_called.expand())
+
+
+class Test_get_node_points(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(num_points, p_order, step_size=None):
+        from assignment1.dg1 import get_node_points
+        return get_node_points(num_points, p_order, step_size=step_size)
+
+    def test_default_step_size(self):
+        import numpy as np
+
+        num_points = 4
+        p_order = 2
+        result = self._call_func_under_test(num_points, p_order)
+        self.assertTrue(isinstance(result, np.ndarray))
+        expected_result = [
+            [0, 2, 4, 6],
+            [1, 3, 5, 7],
+            [2, 4, 6, 8],
+        ]
+        self.assertTrue(np.all(8 * result == expected_result))
+
+    def test_explicit_step_size(self):
+        import numpy as np
+
+        num_points = 4
+        p_order = 2
+        step_size = 1.0 / 3
+        result = self._call_func_under_test(num_points, p_order,
+                                            step_size=step_size)
+        self.assertTrue(isinstance(result, np.ndarray))
+        expected_result = [
+            [0, 4, 8, 12],
+            [3, 7, 11, 15],
+            [6, 10, 14, 18],
+        ]
+        self.assertTrue(np.allclose(18 * result, expected_result))
