@@ -8,12 +8,15 @@ install:
   - .tox/py34/bin/pip install --upgrade --requirement=requirements.txt
   - .tox/lint/bin/pip install --upgrade --requirement=requirements.txt
   - .tox/docs/bin/pip install --upgrade --requirement=requirements.txt
+  - .tox/coveralls/bin/pip install --upgrade --requirement=requirements.txt
 
 script:
   - tox -e py27
   - tox -e py34
   - tox -e lint
   - tox -e docs
+
+after_success:
   - tox -e coveralls
 
 cache:
