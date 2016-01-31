@@ -6,6 +6,7 @@ install:
   - pip install --upgrade tox
 
 script:
+  - .tox/docs/bin/pip install --upgrade --requirement=requirements.txt
   - tox -e docs
 
 cache:
