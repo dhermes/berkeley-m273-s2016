@@ -1,5 +1,7 @@
 import unittest
 
+import mock
+
 
 class Test_get_symbolic_vandermonde(unittest.TestCase):
 
@@ -312,3 +314,133 @@ class Test_get_node_points(unittest.TestCase):
             [6, 10, 14, 18],
         ]
         self.assertTrue(np.allclose(18 * result, expected_result))
+
+
+class Test_make_lagrange_matrix(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(x_vals, all_x):
+        from assignment1.dg1 import make_lagrange_matrix
+        return make_lagrange_matrix(x_vals, all_x)
+
+    def test_it(self):
+        import numpy as np
+
+        x_vals = np.array([0., 1., 2.])
+        # The Lagrange functions for the interpolating x values 0, 1, 2
+        # are simply L0(x) = (x - 1)(x - 2)/2, L1(x) = x(2 - x) and
+        # L2(x) = x(x - 1)/2.
+        all_x = np.array([3., 5., 8., 13.])
+        result = self._call_func_under_test(x_vals, all_x)
+        expected_result = [
+            [1, -3, 3],
+            [6, -15, 10],
+            [21, -48, 28],
+            [66, -143, 78],
+        ]
+        self.assertTrue(np.all(result == expected_result))
+
+
+class TestPolynomialInterpolate(unittest.TestCase):
+
+    @staticmethod
+    def _get_target_class():
+        from assignment1.dg1 import PolynomialInterpolate
+        return PolynomialInterpolate
+
+    def _make_one(self, x_vals, num_points=None):
+        return self._get_target_class()(x_vals, num_points=num_points)
+
+    def test_constructor_defaults(self):
+        import numpy as np
+
+        x_vals = np.array([0.0, 1.0])
+        num_points = 3
+        with mock.patch('assignment1.dg1.INTERVAL_POINTS', new=num_points):
+            interp_func = self._make_one(x_vals)
+
+        self.assertTrue(interp_func.x_vals is x_vals)
+        # Split the interval [0, 1] into ``num_points`` == 3 points.
+        self.assertTrue(np.all(interp_func.all_x == [0, 0.5, 1.0]))
+        # The Lagrange functions for the interpolating x values 0, 1
+        # are simply L0(x) = 1 - x and L1(x) = x. Evaluating these
+        # at [0, 0.5, 1] is straightforward.
+        expected_lagrange = [
+            [1, 0],
+            [0.5, 0.5],
+            [0, 1],
+        ]
+        self.assertTrue(
+            np.all(interp_func.lagrange_matrix == expected_lagrange))
+
+    def test_constructor_explicit(self):
+        import numpy as np
+
+        x_vals = np.array([0.0, 1.0, 2.0])
+        num_points = 5
+        interp_func = self._make_one(x_vals, num_points=num_points)
+
+        self.assertTrue(interp_func.x_vals is x_vals)
+        # Split the interval [0, 2] into ``num_points`` == 5 points.
+        self.assertTrue(np.all(interp_func.all_x == [0, 0.5, 1.0, 1.5, 2.0]))
+        # The Lagrange functions for the interpolating x values 0, 1, 2
+        # are simply L0(x) = (x - 1)(x - 2)/2, L1(x) = x(2 - x) and
+        # L2(x) = x(x - 1)/2. Evaluating these at [0, 0.5, 1, 1.5, 2] gives.
+        expected_lagrange = [
+            [8, 0, 0],
+            [3, 6, -1],
+            [0, 8, 0],
+            [-1, 6, 3],
+            [0, 0, 8],
+        ]
+        self.assertTrue(
+            np.all(8 * interp_func.lagrange_matrix == expected_lagrange))
+
+    def test_interpolate_1D_data(self):
+        import numpy as np
+
+        x_vals = np.array([0.0, 1.0, 2.0])
+        interp_func = self._make_one(x_vals, num_points=5)
+        y_vals = np.array([2., 3., 2.])
+        # Our polynomial is
+        #        2 L0(x) + 3 L1(x) + 2 L2(x)
+        #     == (x - 1)(x - 2) + 3x(2 - x) + x(x - 1)
+        #     == - x^2 + 2x + 2
+        # and we evaluate it at the 5 points [0, 0.5, 1.0, 1.5, 2.0].
+        self.assertEqual(y_vals.shape, (3,))
+        result = interp_func.interpolate(y_vals)
+        # Verify it becomes 2D.
+        self.assertEqual(result.shape, (5, 1))
+        expected_result = [
+            [2.],
+            [2.75],
+            [3.],
+            [2.75],
+            [2.],
+        ]
+        self.assertTrue(np.all(result == expected_result))
+
+    def test_interpolate_2D_data(self):
+        import numpy as np
+
+        x_vals = np.array([0.0, 1.0])
+        interp_func = self._make_one(x_vals, num_points=3)
+        y_vals = np.array([
+            [10., 11., 5.],
+            [20., 12., 4.],
+        ])
+        # Our polynomials are
+        #     10 L0(x) + 20 L1(x) = 10(1 - x) + 20x = 10 + 10x
+        #     11 L0(x) + 12 L1(x) = 11(1 - x) + 12x = 11 +   x
+        #      5 L0(x) +  4 L1(x) =  5(1 - x) +  4x =  5 -   x
+        # and we evaluate them at the 3 points [0, 0.5, 2.0]
+        self.assertEqual(y_vals.shape, (2, 3))
+        result = interp_func.interpolate(y_vals)
+        # Verify it becomes 2D.
+        self.assertEqual(result.shape, (3, 3))
+        expected_result = [
+            [10, 11, 5],
+            [15, 11.5, 4.5],
+            [20, 12, 4],
+        ]
+        self.assertTrue(np.all(result == expected_result))

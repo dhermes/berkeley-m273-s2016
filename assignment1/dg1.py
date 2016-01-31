@@ -412,6 +412,48 @@ def get_node_points(num_points, p_order, step_size=None):
             interval_starts[np.newaxis, :])
 
 
+def make_lagrange_matrix(x_vals, all_x):
+    """Make matrix where :math:`M_{ij} = \\ell_j(x_i)`.
+
+    This matrix contains the Lagrange interpolating polynomials evaluated
+    on the interval given by ``x_vals``. The :math:`x_i` (corresponding to
+    rows in :math:`M`) are the ``num_points`` possible :math:`x`-values in
+    ``all_x`` and the :math:`\\ell_j` (corresponding to columns in
+    :math:`M`) are the Lagrange interpolating polynomials interpolated
+    on the points in ``x_vals``.
+
+    :type x_vals: :class:`numpy.ndarray`
+    :param x_vals: 1D array of :math:`x`-values used to interpolate data via
+                   Lagrange basis functions.
+
+    :type all_x: :class:`numpy.ndarray`
+    :param all_x: 1D array of points to evaluate the :math:`\\ell_j(x)`` at.
+
+    :rtype: :class:`numpy.ndarray`
+    :returns: The matrix :math:`M`.
+    """
+    # First compute the denominators of the Lagrange polynomials.
+    pairwise_diff = x_vals[:, np.newaxis] - x_vals[np.newaxis, :]
+    # Put 1's on the diagonal (instead of zeros) before taking product.
+    np.fill_diagonal(pairwise_diff, 1.0)
+    lagrange_denoms = np.prod(pairwise_diff, axis=1)  # Row products.
+
+    num_x = x_vals.size
+    # Now compute the differences of our x-values for plotting
+    # and the x-values used to interpolate.
+    new_x_diff = all_x[:, np.newaxis] - x_vals[np.newaxis, :]
+    result = np.zeros((all_x.size, num_x))
+
+    for index in six.moves.xrange(num_x):
+        curr_slice = np.hstack([new_x_diff[:, :index],
+                                new_x_diff[:, index + 1:]])
+        result[:, index] = (np.prod(curr_slice, axis=1) /
+                            lagrange_denoms[index])
+
+    return result
+
+
+# pylint: disable=too-few-public-methods
 class PolynomialInterpolate(object):
     """Polynomial interpolation from node points.
 
@@ -436,50 +478,19 @@ class PolynomialInterpolate(object):
                    of points.
 
     :type num_points: int
-    :param num_points: The number of points to use to represent
-                       the polynomial.
+    :param num_points: (Optional) The number of points to use to represent
+                       the polynomial. Defaults to :data:`INTERVAL_POINTS`.
     """
 
-    def __init__(self, x_vals, num_points=INTERVAL_POINTS):
+    def __init__(self, x_vals, num_points=None):
         self.x_vals = x_vals
         # Computed values.
         min_x = x_vals[0]
         max_x = x_vals[-1]
+        if num_points is None:
+            num_points = INTERVAL_POINTS
         self.all_x = np.linspace(min_x, max_x, num_points)
-        self.lagrange_matrix = self.make_lagrange_matrix()
-
-    def make_lagrange_matrix(self):
-        """Make matrix where :math:`M_{ij} = \\ell_j(x_i)`.
-
-        This matrix contains the Lagrange interpolating polynomials evaluated
-        on the interval given by ``x_vals``. The :math:`x_i` (corresponding to
-        rows in :math:`M`) are the ``num_points`` possible :math:`x`-values in
-        ``all_x`` and the :math:`\\ell_j` (corresponding to columns in
-        :math:`M`) are the Lagrange interpolating polynomials interpolated
-        on the points in ``x_vals``.
-
-        :rtype: :class:`numpy.ndarray`
-        :returns: The matrix :math:`M`.
-        """
-        # First compute the denominators of the Lagrange polynomials.
-        pairwise_diff = self.x_vals[:, np.newaxis] - self.x_vals[np.newaxis, :]
-        # Put 1's on the diagonal (instead of zeros) before taking product.
-        np.fill_diagonal(pairwise_diff, 1.0)
-        lagrange_denoms = np.prod(pairwise_diff, axis=1)  # Row products.
-
-        num_x = self.x_vals.size
-        # Now compute the differences of our x-values for plotting
-        # and the x-values used to interpolate.
-        new_x_diff = self.all_x[:, np.newaxis] - self.x_vals[np.newaxis, :]
-        result = np.zeros((self.all_x.size, num_x))
-
-        for index in six.moves.xrange(num_x):
-            curr_slice = np.hstack([new_x_diff[:, :index],
-                                    new_x_diff[:, index + 1:]])
-            result[:, index] = (np.prod(curr_slice, axis=1) /
-                                lagrange_denoms[index])
-
-        return result
+        self.lagrange_matrix = make_lagrange_matrix(self.x_vals, self.all_x)
 
     def interpolate(self, y_vals):
         """Evaluate interpolated polynomial given :math:`y`-values.
@@ -496,17 +507,22 @@ class PolynomialInterpolate(object):
         using the :math:`y_j` from ``y_vals``.
 
         :type y_vals: :class:`numpy.ndarray`
-        :param y_vals: 1D array of :math:`y`-values that uniquely define
-                       our interpolating polynomial.
+        :param y_vals: Array of :math:`y`-values that uniquely define
+                       our interpolating polynomial. If 1D, converted into
+                       a column vector before returning.
 
         :rtype: :class:`numpy.ndarray`
-        :returns: 1D array containing :math:`p(x)` for each :math:`x`-value
-                  in the interval (``num_points`` in all).
+        :returns: 2D array containing :math:`p(x)` for each :math:`x`-value
+                  in the interval (``num_points`` in all). If there are
+                  multiple columns in ``y_vals`` (i.e. multiple :math:`p(x)`)
+                  then each column of the result will corresponding to each
+                  of these polynomials evaluated at ``all_x``.
         """
         if len(y_vals.shape) == 1:
             # Make into a column vector before applying matrix.
             y_vals = y_vals[:, np.newaxis]
         return self.lagrange_matrix.dot(y_vals)
+# pylint: enable=too-few-public-methods
 
 
 class DG1Solver(object):
