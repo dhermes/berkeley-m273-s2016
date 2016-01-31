@@ -276,8 +276,8 @@ def find_matrices(p_order):
     :param p_order: The degree of precision for the method.
 
     :rtype: tuple
-    :returns: Pair of mass and stiffness matrix, square :class:`numpy.ndarray`
-              with rows/columns equal to ``p_order + 1``.
+    :returns: Pair of mass and stiffness matrices, square
+              :class:`numpy.ndarray` of dimension ``p_order + 1``.
     """
     num_leg = p_order + 1
     leg_pts, leg_weights = legendre.leggauss(num_leg)

@@ -6,8 +6,9 @@ install:
   - pip install --upgrade numpy Sphinx sympy
 
 script:
-  - tox -e docs
   - .tox/docs/bin/python -c 'import sys; print sys.executable'
+  - echo ${TRAVIS_COMMIT_RANGE}
+  - echo ${TRAVIS_BUILD_DIR}
 
 cache:
   directories:
