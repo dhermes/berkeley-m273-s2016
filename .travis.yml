@@ -2,16 +2,15 @@ language: python
 sudo: false
 
 install:
-  - pip install --upgrade pip tox
-  - pip install --upgrade numpy Sphinx sympy
+  - pip install --upgrade pip
+  - pip install --upgrade tox
 
 script:
-  - .tox/docs/bin/python -c 'import sys; print sys.executable'
-  - echo ${TRAVIS_COMMIT_RANGE}
-  - echo ${TRAVIS_BUILD_DIR}
+  - tox -e docs
 
 cache:
   directories:
     - ${HOME}/.cache/pip
     - ${HOME}/virtualenv/python2.7.9/lib/python2.7/site-packages
     - ${HOME}/virtualenv/python2.7.9/bin
+    - ${TRAVIS_BUILD_DIR}/.tox
