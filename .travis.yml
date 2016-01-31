@@ -4,14 +4,15 @@ sudo: false
 install:
   - pip install --upgrade pip
   - pip install --upgrade tox
+  - .tox/py27/bin/pip install --upgrade --requirement=requirements.txt
+  - .tox/py34/bin/pip install --upgrade --requirement=requirements.txt
+  - .tox/lint/bin/pip install --upgrade --requirement=requirements.txt
+  - .tox/docs/bin/pip install --upgrade --requirement=requirements.txt
 
 script:
-  - .tox/py27/bin/pip install --upgrade --requirement=requirements.txt
   - tox -e py27
-  - .tox/py34/bin/pip install --upgrade --requirement=requirements.txt
   - tox -e py34
   - tox -e lint
-  - .tox/docs/bin/pip install --upgrade --requirement=requirements.txt
   - tox -e docs
 
 cache:
