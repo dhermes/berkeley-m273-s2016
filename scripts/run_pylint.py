@@ -32,8 +32,14 @@ SCRIPTS_DIR = os.path.abspath(os.path.dirname(__file__))
 PRODUCTION_RC = os.path.join(SCRIPTS_DIR, 'pylintrc_default')
 TEST_RC = os.path.join(SCRIPTS_DIR, 'pylintrc_reduced')
 TEST_DISABLED_MESSAGES = [
+    'invalid-name',
+    'missing-docstring',
 ]
-TEST_RC_ADDITIONS = {}
+TEST_RC_ADDITIONS = {
+    'MESSAGES CONTROL': {
+        'disable': ', '.join(TEST_DISABLED_MESSAGES),
+    },
+}
 
 
 def read_config(filename):
@@ -50,11 +56,15 @@ def make_test_rc(base_rc_filename, additions_dict, target_filename):
 
     # Create fresh config for test, which must extend production.
     test_cfg = ConfigParser.ConfigParser()
+    # pylint: disable=protected-access
     test_cfg._sections = copy.deepcopy(main_cfg._sections)
+    # pylint: enable=protected-access
 
     for section, opts in additions_dict.items():
+        # pylint: disable=protected-access
         curr_section = test_cfg._sections.setdefault(
             section, test_cfg._dict())
+        # pylint: enable=protected-access
         for opt, opt_val in opts.items():
             curr_val = curr_section.get(opt)
             if curr_val is None:

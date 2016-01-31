@@ -24,6 +24,30 @@ INTERVAL_POINTS = 10
 """Number of points to use when plotting a polynomial on an interval."""
 
 
+def get_symbolic_vandermonde(p_order):
+    """Get symbolic Vandermonde matrix of evenly spaced points.
+
+    :type p_order: int
+    :param p_order: The degree of precision for the method.
+
+    :rtype: tuple
+    :returns: Pair of vector of powers of :math:`x` and Vandermonde matrix.
+              Both are type
+              :class:`sympy.Matrix <sympy.matrices.dense.MutableDenseMatrix>`,
+              the ``x_vec`` is a row vector with ``p_order + 1`` columns and
+              the Vandermonde matrix is square of dimension ``p_order + 1``.
+    """
+    x_symb = sympy.Symbol('x')
+    x_vals = sympy.Matrix(six.moves.xrange(p_order + 1)) / p_order
+    vand_mat = sympy.zeros(p_order + 1, p_order + 1)
+    x_vec = sympy.zeros(1, p_order + 1)
+    for i in six.moves.xrange(p_order + 1):
+        x_vec[i] = x_symb**i
+        for j in six.moves.xrange(p_order + 1):
+            vand_mat[i, j] = x_vals[i]**j
+    return x_vec, vand_mat
+
+
 def find_matrices_symbolic(p_order):
     """Find mass and stiffness matrices using symbolic algebra.
 
@@ -74,32 +98,28 @@ def find_matrices_symbolic(p_order):
               with rows/columns equal to ``p_order + 1``.
     """
     x_symb = sympy.Symbol('x')
-    x_vals = sympy.Matrix(six.moves.xrange(p_order + 1)) / p_order
-    V = sympy.zeros(p_order + 1, p_order + 1)
-    x_vec = sympy.zeros(1, p_order + 1)
-    for i in six.moves.xrange(p_order + 1):
-        x_vec[i] = x_symb**i
-        for j in six.moves.xrange(p_order + 1):
-            V[i, j] = x_vals[i]**j
-    coeff_mat = V**(-1)
+    x_vec, vand_mat = get_symbolic_vandermonde(p_order)
+    coeff_mat = vand_mat**(-1)
     phi_funcs = x_vec * coeff_mat
 
-    M = sympy.zeros(p_order + 1, p_order + 1)
-    K = sympy.zeros(p_order + 1, p_order + 1)
+    mass_mat = sympy.zeros(p_order + 1, p_order + 1)
+    stiffness_mat = sympy.zeros(p_order + 1, p_order + 1)
     for i in six.moves.xrange(p_order + 1):
         phi_i = phi_funcs[i]
         phi_i_prime = sympy.diff(phi_i, x_symb)
         for j in six.moves.xrange(i, p_order + 1):
             phi_j = phi_funcs[j]
-            I_M = sympy.integrate(phi_i * phi_j, x_symb)
-            I_K = sympy.integrate(phi_i_prime * phi_j, x_symb)
-            M[i, j] = I_M.subs({x_symb: 1}) - I_M.subs({x_symb: 0})
-            K[i, j] = I_K.subs({x_symb: 1}) - I_K.subs({x_symb: 0})
+            integral_m = sympy.integrate(phi_i * phi_j, x_symb)
+            integral_k = sympy.integrate(phi_i_prime * phi_j, x_symb)
+            mass_mat[i, j] = (integral_m.subs({x_symb: 1}) -
+                              integral_m.subs({x_symb: 0}))
+            stiffness_mat[i, j] = (integral_k.subs({x_symb: 1}) -
+                                   integral_k.subs({x_symb: 0}))
             if j > i:
-                M[j, i] = M[i, j]
-                K[j, i] = -K[i, j]
+                mass_mat[j, i] = mass_mat[i, j]
+                stiffness_mat[j, i] = -stiffness_mat[i, j]
 
-    return M, K
+    return mass_mat, stiffness_mat
 
 
 def mass_and_stiffness_matrices_p1():
@@ -122,15 +142,15 @@ def mass_and_stiffness_matrices_p1():
     :returns: Pair of mass and stiffness matrices, :math:`2 \\times 2`
               :class:`numpy.ndarray`.
     """
-    M = np.array([
+    mass_mat = np.array([
         [2, 1],
         [1, 2],
     ]) / 6.0
-    K = np.array([
+    stiffness_mat = np.array([
         [-1, -1],
         [1, 1],
     ]) / 2.0
-    return M, K
+    return mass_mat, stiffness_mat
 
 
 def mass_and_stiffness_matrices_p2():
@@ -155,17 +175,17 @@ def mass_and_stiffness_matrices_p2():
     :returns: Pair of mass and stiffness matrices, :math:`3 \\times 3`
               :class:`numpy.ndarray`.
     """
-    M = np.array([
+    mass_mat = np.array([
         [4, 2, -1],
         [2, 16, 2],
         [-1, 2, 4],
     ]) / 30.0
-    K = np.array([
+    stiffness_mat = np.array([
         [-3, -4, 1],
         [4, 0, -4],
         [-1, 4, 3],
     ]) / 6.0
-    return M, K
+    return mass_mat, stiffness_mat
 
 
 def mass_and_stiffness_matrices_p3():
@@ -192,19 +212,19 @@ def mass_and_stiffness_matrices_p3():
     :returns: Pair of mass and stiffness matrices, :math:`4 \\times 4`
               :class:`numpy.ndarray`.
     """
-    M = np.array([
+    mass_mat = np.array([
         [128, 99, -36, 19],
         [99, 648, -81, -36],
         [-36, -81, 648, 99],
         [19, -36, 99, 128],
     ]) / 1680.0
-    K = np.array([
+    stiffness_mat = np.array([
         [-40, -57, 24, -7],
         [57, 0, -81, 24],
         [-24, 81, 0, -57],
         [7, -24, 57, 40],
     ]) / 80.0
-    return M, K
+    return mass_mat, stiffness_mat
 
 
 def find_matrices(p_order):
@@ -268,11 +288,11 @@ def find_matrices(p_order):
 
     # Now create the Vandermonde matrix and invert.
     x_vals = np.arange(p_order + 1, dtype=np.float64) / p_order
-    V = np.zeros((p_order + 1, p_order + 1))
+    vand_mat = np.zeros((p_order + 1, p_order + 1))
     for i in six.moves.xrange(p_order + 1):
         for j in six.moves.xrange(p_order + 1):
-            V[i, j] = x_vals[i]**j
-    coeff_mat = np.linalg.inv(V)
+            vand_mat[i, j] = x_vals[i]**j
+    coeff_mat = np.linalg.inv(vand_mat)
 
     # Evaluate the PHI_i at the Legendre points.
     phi_vals = polynomial.polyval(leg_pts, coeff_mat)
@@ -280,21 +300,21 @@ def find_matrices(p_order):
     # columns correspond to the values in ``leg_pts``.
 
     # Populate the mass and stiffness matrices.
-    M = np.zeros((p_order + 1, p_order + 1))
-    K = np.zeros((p_order + 1, p_order + 1))
+    mass_mat = np.zeros((p_order + 1, p_order + 1))
+    stiffness_mat = np.zeros((p_order + 1, p_order + 1))
     for i in six.moves.xrange(p_order + 1):
         phi_i = phi_vals[i, :]
         phi_i_prime = polynomial.polyval(
             leg_pts, polynomial.polyder(coeff_mat[:, i]))
         for j in six.moves.xrange(i, p_order + 1):
             phi_j = phi_vals[j, :]
-            M[i, j] = (phi_i * phi_j).dot(leg_weights)
-            K[i, j] = (phi_i_prime * phi_j).dot(leg_weights)
+            mass_mat[i, j] = (phi_i * phi_j).dot(leg_weights)
+            stiffness_mat[i, j] = (phi_i_prime * phi_j).dot(leg_weights)
             if j > i:
-                M[j, i] = M[i, j]
-                K[j, i] = -K[i, j]
+                mass_mat[j, i] = mass_mat[i, j]
+                stiffness_mat[j, i] = -stiffness_mat[i, j]
 
-    return M, K
+    return mass_mat, stiffness_mat
 
 
 def low_storage_rk(ode_func, u_val, dt):
@@ -362,18 +382,18 @@ def low_storage_rk(ode_func, u_val, dt):
     return u_curr
 
 
-def get_node_points(n, p_order, h=None):
+def get_node_points(num_points, p_order, step_size=None):
     """Return node points to splitting unit interval for DG.
 
-    :type n: int
-    :param n: The number of intervals to divide :math:`\\left[0, 1\\right]`
-              into.
+    :type num_points: int
+    :param num_points: The number :math:`n` of intervals to divide
+                       :math:`\\left[0, 1\\right]` into.
 
     :type p_order: int
     :param p_order: The degree of precision for the method.
 
-    :type h: float
-    :param h: (Optional) The step size :math:`1 / n`.
+    :type step_size: float
+    :param step_size: (Optional) The step size :math:`1 / n`.
 
     :rtype: :class:`numpy.ndarray`
     :returns: The :math:`x`-values for the node points, with
@@ -381,11 +401,11 @@ def get_node_points(n, p_order, h=None):
               correspond to each sub-interval and the rows correspond
               to the node points within each sub-interval.
     """
-    if h is None:
-        h = 1.0 / n
-    interval_starts = np.linspace(0, 1 - h, n)
+    if step_size is None:
+        step_size = 1.0 / num_points
+    interval_starts = np.linspace(0, 1 - step_size, num_points)
     # Split the first interval [0, h] in ``p_order + 1`` points
-    first_interval = np.linspace(0, h, p_order + 1)
+    first_interval = np.linspace(0, step_size, p_order + 1)
     # Broadcast the values with ``first_interval`` as rows and
     # columns as ``interval_starts``.
     return (first_interval[:, np.newaxis] +
@@ -519,35 +539,36 @@ class DG1Solver(object):
     where each column represents one of :math:`n` sub-intervals and each row
     represents one of the :math:`p + 1` node points within each sub-interval.
 
-    :type n: int
-    :param n: The number of intervals to divide :math:`\\left[0, 1\\right]`
-              into.
+    :type num_intervals: int
+    :param num_intervals: The number :math:`n` of intervals to divide
+                          :math:`\\left[0, 1\\right]` into.
 
     :type p_order: int
     :param p_order: The degree of precision for the method.
 
-    :type T: float
-    :param T: The amount of time to run the solver for (starts at
-              :math:`t = 0`.
+    :type total_time: float
+    :param total_time: The amount of time to run the solver for (starts at
+                       :math:`t = 0`.
 
     :type dt: float
     :param dt: The timestep to use in the solver.
     """
 
-    def __init__(self, n, p_order, T, dt):
-        self.n = n
+    def __init__(self, num_intervals, p_order, total_time, dt):
+        self.num_intervals = num_intervals
         self.p_order = p_order
-        self.T = T
+        self.total_time = total_time
         self.dt = dt
         self.current_step = 0
         # Computed values.
-        self.num_steps = int(np.round(self.T / self.dt))
-        self.h = 1.0 / self.n
-        self.x = get_node_points(self.n, self.p_order, h=self.h)
-        self.u = self._get_initial_data()
-        M, K = self.get_mass_and_stiffness_matrices()
-        self.mass_mat = M
-        self.stiffness_mat = K
+        self.num_steps = int(np.round(self.total_time / self.dt))
+        self.step_size = 1.0 / self.num_intervals
+        self.node_points = get_node_points(self.num_intervals, self.p_order,
+                                           step_size=self.step_size)
+        # The solution: u(x, t).
+        self.solution = self._get_initial_data()
+        (self.mass_mat,
+         self.stiffness_mat) = self.get_mass_and_stiffness_matrices()
 
     def _get_initial_data(self):
         """Get the initial solution data.
@@ -560,9 +581,9 @@ class DG1Solver(object):
                                  \\right)^2\\right)
 
         :rtype: :class:`numpy.ndarray`
-        :returns: The :math:`u`-values at each point in :math:`x`.
+        :returns: The :math:`u`-values at each node point.
         """
-        return np.exp(-(self.x - 0.5)**2 / 0.01)
+        return np.exp(-(self.node_points - 0.5)**2 / 0.01)
 
     def get_mass_and_stiffness_matrices(self):
         """Get the mass and stiffness matrices for the current solver.
@@ -579,15 +600,15 @@ class DG1Solver(object):
                   ``p_order + 1`` rows and columns.
         """
         if self.p_order == 1:
-            M, K = mass_and_stiffness_matrices_p1()
+            mass_mat, stiffness_mat = mass_and_stiffness_matrices_p1()
         elif self.p_order == 2:
-            M, K = mass_and_stiffness_matrices_p2()
+            mass_mat, stiffness_mat = mass_and_stiffness_matrices_p2()
         elif self.p_order == 3:
-            M, K = mass_and_stiffness_matrices_p3()
+            mass_mat, stiffness_mat = mass_and_stiffness_matrices_p3()
         else:
-            M, K = find_matrices(p_order)
+            mass_mat, stiffness_mat = find_matrices(self.p_order)
 
-        return self.h * M, K
+        return self.step_size * mass_mat, stiffness_mat
 
     def ode_func(self, u_val):
         """Compute the right-hand side for the ODE.
@@ -613,14 +634,14 @@ class DG1Solver(object):
         :rtype: :class:`numpy.ndarray`
         :returns: The value of the slope function evaluated at ``u_val``.
         """
-        r = np.dot(self.stiffness_mat, u_val)
+        rhs = np.dot(self.stiffness_mat, u_val)
 
         # First we modify
         #    K u^k --> K u^k - up^k ep
         # so we just take the final row of ``u``
         #     [up^0, up^1, ..., up^{n-1}]
         # and subtract it from the last component of ``r``.
-        r[-1, :] -= u_val[-1, :]
+        rhs[-1, :] -= u_val[-1, :]
         # Then we modify
         #    K u^k - up^k ep --> K u^k - up^k ep + up^{k-1} e0
         # with the assumption that up^{-1} = up^{n-1}, i.e. we
@@ -628,8 +649,8 @@ class DG1Solver(object):
         # the final row of ``u`` around to
         #     [up^1, ..., up^{n-1}, up^0]
         # and add it to the first component of ``r``.
-        r[0, :] += np.roll(u_val[-1, :], shift=1)
-        return np.linalg.solve(self.mass_mat, r)
+        rhs[0, :] += np.roll(u_val[-1, :], shift=1)
+        return np.linalg.solve(self.mass_mat, rhs)
 
     def update(self):
         """Update the solution for a single time step.
@@ -638,7 +659,7 @@ class DG1Solver(object):
         pair it with an RK method (:func:`low_storage_rk`) to compute
         the updated value.
         """
-        self.u = low_storage_rk(self.ode_func, self.u, self.dt)
+        self.solution = low_storage_rk(self.ode_func, self.solution, self.dt)
         self.current_step += 1
 
 
@@ -697,7 +718,7 @@ class DG1Animate(object):
         :returns: Interpolation object for the reference
         """
         # Reference ``x``-values are in the first column.
-        x_vals = self.solver.x[:, 0]
+        x_vals = self.solver.node_points[:, 0]
         return PolynomialInterpolate(x_vals)
 
     def _plot_solution(self, color):
@@ -709,12 +730,12 @@ class DG1Animate(object):
         :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
         :returns: List of the updated matplotlib line objects.
         """
-        _, num_cols = self.solver.x.shape
+        _, num_cols = self.solver.node_points.shape
         plot_lines = []
         interp_func = self.poly_interp_func
-        all_y = interp_func.interpolate(self.solver.u)
+        all_y = interp_func.interpolate(self.solver.solution)
         for index in six.moves.xrange(num_cols):
-            x_start = self.solver.x[0, index],
+            x_start = self.solver.node_points[0, index],
             line, = self.ax.plot(x_start + interp_func.all_x,
                                  all_y[:, index],
                                  color=color, linewidth=2)
@@ -768,7 +789,7 @@ class DG1Animate(object):
                              'frame number', self.solver.current_step,
                              frame_number)
         self.solver.update()
-        all_y = self.poly_interp_func.interpolate(self.solver.u)
+        all_y = self.poly_interp_func.interpolate(self.solver.solution)
         for index, line in enumerate(self.plot_lines):
             line.set_ydata(all_y[:, index])
         return self.plot_lines
