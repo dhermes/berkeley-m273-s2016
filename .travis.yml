@@ -15,6 +15,9 @@ script:
   - tox -e lint
   - tox -e docs
 
+after_success:
+  - tox -e coveralls
+
 cache:
   directories:
     - ${HOME}/.cache/pip
