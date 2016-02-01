@@ -4,7 +4,7 @@ sudo: false
 install:
   - pip install --upgrade pip
   - pip install --upgrade tox
-  - ./update_tox_deps.sh
+  - ./scripts/update_tox_deps.sh
 
 script:
   - tox -e py27
