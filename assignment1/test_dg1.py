@@ -341,7 +341,7 @@ class Test_make_lagrange_matrix(unittest.TestCase):
         self.assertTrue(np.all(result == expected_result))
 
 
-class Test_make_lagrange_matrix(unittest.TestCase):
+class Test_get_gaussian_like_initial_data(unittest.TestCase):
 
     @staticmethod
     def _call_func_under_test(node_points):
