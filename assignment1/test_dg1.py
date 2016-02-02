@@ -613,3 +613,41 @@ class TestDG1Solver(unittest.TestCase):
         self.assertTrue(np.all(solver.node_points == expected_nodes))
         self.assertTrue(np.all(solver.solution == 2 * solver.node_points))
         # No need to check the matrices.
+
+    def test_ode_func(self):
+        import numpy as np
+
+        solver = self._make_one(2, 1, self.total_time, self.dt)
+        # Artificially patch the mass_mat and stiffness_mat.
+        solver.mass_mat = np.array([
+            [4., 0.],
+            [0., 5.],
+        ])
+        solver.stiffness_mat = np.array([
+            [5., 1.],
+            [-2., 0.],
+        ])
+        u_val = np.array([
+            [0., 0.1, 0.2, 0.7, 1.1],
+            [0.4, 0.8, 1.2, 1.9, 5.0],
+        ])
+        expected_result = np.array([
+            [1.35, 0.425, 0.75, 1.65, 3.1],
+            [-0.08, -0.2, -0.32, -0.66, -1.44],
+        ])
+        self.assertTrue(np.allclose(solver.ode_func(u_val), expected_result))
+
+    @mock.patch('assignment1.dg1.low_storage_rk', return_value=object())
+    def test_update(self, rk_method):
+        solver = self._make_one(2, 1, self.total_time, self.dt)
+        # Artificially patch the pieces used by update.
+        solver.current_step = current_step = 121
+        solver.solution = orig_soln = object()
+        solver.dt = object()
+        result = solver.update()
+        self.assertEqual(result, None)
+        # Check updated state.
+        self.assertEqual(solver.current_step, current_step + 1)
+        self.assertEqual(solver.solution, rk_method.return_value)
+        # Veriy mock.
+        rk_method.assert_called_once_with(solver.ode_func, orig_soln, solver.dt)
