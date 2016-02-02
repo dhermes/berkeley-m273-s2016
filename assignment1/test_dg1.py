@@ -689,23 +689,9 @@ class TestDG1Animate(unittest.TestCase):
         from assignment1.dg1 import DG1Animate
         return DG1Animate
 
-    def _no_config_class(self):
-        klass = self._get_target_class()
-
-        class NoConfigSubclass(klass):
-
-            config_called = False
-            plot_soln_count = 0
-            plot_soln_last_color = None
-
-            def _configure_axis(self):
-                self.__class__.config_called = True
-
-            def _plot_solution(self, color):
-                self.__class__.plot_soln_count += 1
-                self.__class__.plot_soln_last_color = color
-
-        return NoConfigSubclass
+    def _make_one(self, solver, fig=None, ax=None, interp_points=None):
+        return self._get_target_class()(solver, fig=fig, ax=ax,
+                                        interp_points=interp_points)
 
     @mock.patch('matplotlib.pyplot.subplots', create=True)
     @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver',
@@ -715,18 +701,10 @@ class TestDG1Animate(unittest.TestCase):
         fig = object()
         ax = object()
         subplots.return_value = fig, ax
-        # Make a subclass which mocks out the constructor helpers.
-        subklass = self._no_config_class()
-        self.assertFalse(subklass.config_called)
-        self.assertEqual(subklass.plot_soln_count, 0)
-        self.assertEqual(subklass.plot_soln_last_color, None)
         # Construct the object.
         solver = object()
-        animate_obj = subklass(solver)
+        animate_obj = self._make_one(solver)
         # Verify properties
-        self.assertTrue(subklass.config_called)
-        self.assertEqual(subklass.plot_soln_count, 1)
-        self.assertEqual(subklass.plot_soln_last_color, 'red')
         self.assertEqual(animate_obj.solver, solver)
         self.assertEqual(animate_obj.poly_interp_func,
                          interp_factory.return_value)
@@ -739,19 +717,17 @@ class TestDG1Animate(unittest.TestCase):
     @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver')
     def test_constructor_axis_with_no_figure(self, interp_factory):
         # Make a subclass which mocks out the constructor helpers.
-        subklass = self._no_config_class()
         solver = object()
         # Fail to construct the object.
         with self.assertRaises(ValueError):
-            subklass(solver, ax=object())
+            self._make_one(solver, ax=object())
         interp_factory.assert_called_once_with(solver, num_points=None)
 
     @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver')
     def test_constructor_figure_with_no_axis(self, interp_factory):
         # Make a subclass which mocks out the constructor helpers.
-        subklass = self._no_config_class()
         solver = object()
         # Fail to construct the object.
         with self.assertRaises(ValueError):
-            subklass(solver, fig=object())
+            self._make_one(solver, fig=object())
         interp_factory.assert_called_once_with(solver, num_points=None)

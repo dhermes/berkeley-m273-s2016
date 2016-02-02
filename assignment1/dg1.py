@@ -760,9 +760,6 @@ class DG1Animate(object):
         # was not None, then it's possible ax **was** None.
         if self.ax is None:
             raise ValueError('Received a figure but no axis.')
-        self._configure_axis()
-        # Plot the initial data (in red) to compare against.
-        self._plot_solution('red')
 
     def _configure_axis(self):
         """Configure the axis for plotting."""
@@ -811,6 +808,11 @@ class DG1Animate(object):
         :returns: List of the updated matplotlib line objects,
                   with length equal to :math:`n` (coming from ``solver``).
         """
+        # Pre-configure the axes and the background data.
+        self._configure_axis()
+        # Plot the initial data (in red) to compare against.
+        self._plot_solution('red')
+
         # Plot the same data (in blue) and store the lines.
         self.plot_lines = self._plot_solution('blue')
         # For ``init_func`` with ``blit`` turned on, the initial
