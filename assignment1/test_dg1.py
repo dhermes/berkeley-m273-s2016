@@ -649,5 +649,79 @@ class TestDG1Solver(unittest.TestCase):
         # Check updated state.
         self.assertEqual(solver.current_step, current_step + 1)
         self.assertEqual(solver.solution, rk_method.return_value)
-        # Veriy mock.
-        rk_method.assert_called_once_with(solver.ode_func, orig_soln, solver.dt)
+        # Verify mock.
+        rk_method.assert_called_once_with(solver.ode_func,
+                                          orig_soln, solver.dt)
+
+
+class TestDG1Animate(unittest.TestCase):
+
+    @staticmethod
+    def _get_target_class():
+        from assignment1.dg1 import DG1Animate
+        return DG1Animate
+
+    def _no_config_class(self, interp_func):
+        klass = self._get_target_class()
+
+        class NoConfigSubclass(klass):
+
+            config_called = False
+            get_interp_called = False
+            plot_soln_count = 0
+            plot_soln_last_color = None
+
+            def _configure_axis(self):
+                self.__class__.config_called = True
+
+            def _get_interpolation_func(self):
+                self.__class__.get_interp_called = True
+                return interp_func
+
+            def _plot_solution(self, color):
+                self.__class__.plot_soln_count += 1
+                self.__class__.plot_soln_last_color = color
+
+        return NoConfigSubclass
+
+    @mock.patch('matplotlib.pyplot.subplots', create=True)
+    def test_constructor_defaults(self, subplots):
+        # Set-up mocks.
+        fig = object()
+        ax = object()
+        subplots.return_value = fig, ax
+        # Make a subclass which mocks out the constructor helpers.
+        interp_func = object()
+        subklass = self._no_config_class(interp_func)
+        self.assertFalse(subklass.config_called)
+        self.assertFalse(subklass.get_interp_called)
+        self.assertEqual(subklass.plot_soln_count, 0)
+        self.assertEqual(subklass.plot_soln_last_color, None)
+        # Construct the object.
+        solver = object()
+        animate_obj = subklass(solver)
+        # Verify properties
+        self.assertTrue(subklass.config_called)
+        self.assertTrue(subklass.get_interp_called)
+        self.assertEqual(subklass.plot_soln_count, 1)
+        self.assertEqual(subklass.plot_soln_last_color, 'red')
+        self.assertEqual(animate_obj.solver, solver)
+        self.assertEqual(animate_obj.poly_interp_func, interp_func)
+        self.assertEqual(animate_obj.fig, fig)
+        self.assertEqual(animate_obj.ax, ax)
+        # Verify mock.
+        subplots.assert_called_once_with(1, 1)
+
+    def test_constructor_axis_with_no_figure(self):
+        # Make a subclass which mocks out the constructor helpers.
+        subklass = self._no_config_class(None)
+        # Fail to construct the object.
+        with self.assertRaises(ValueError):
+            subklass(None, ax=object())
+
+    def test_constructor_figure_with_no_axis(self):
+        # Make a subclass which mocks out the constructor helpers.
+        subklass = self._no_config_class(None)
+        # Fail to construct the object.
+        with self.assertRaises(ValueError):
+            subklass(None, fig=object())
