@@ -34,6 +34,7 @@ TEST_RC = os.path.join(SCRIPTS_DIR, 'pylintrc_reduced')
 TEST_DISABLED_MESSAGES = [
     'invalid-name',
     'missing-docstring',
+    'no-value-for-parameter',
     'not-callable',
     'redefined-variable-type',
     'too-many-ancestors',

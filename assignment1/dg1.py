@@ -453,6 +453,25 @@ def make_lagrange_matrix(x_vals, all_x):
     return result
 
 
+def get_gaussian_like_initial_data(node_points):
+    """Get the default initial solution data.
+
+    In this case it is
+
+    .. math::
+
+       u(x, 0) = \\exp\\left(-\\left(\\frac{x - \\frac{1}{2}}{0.1}
+                             \\right)^2\\right)
+
+    :type node_points: :class:`numpy.ndarray`
+    :param node_points: Points at which evaluate the initial data function.
+
+    :rtype: :class:`numpy.ndarray`
+    :returns: The :math:`u`-values at each node point.
+    """
+    return np.exp(-(node_points - 0.5)**2 / 0.01)
+
+
 # pylint: disable=too-few-public-methods
 class PolynomialInterpolate(object):
     """Polynomial interpolation from node points.
@@ -532,13 +551,15 @@ class DG1Solver(object):
 
        \\frac{\\partial u}{\\partial t} + \\frac{\\partial u}{\\partial x} = 0
 
-    on the interval :math:`\\left[0, 1\\right]` with Gaussian-like
-    initial data
+    on the interval :math:`\\left[0, 1\\right]`. By default, uses
+    Gaussian-like initial data
 
     .. math::
 
        u(x, 0) = \\exp\\left(-\\left(\\frac{x - \\frac{1}{2}}{0.1}
                              \\right)^2\\right)
+
+    but :math:`u(x, 0)` can be specified via ``get_initial_data``.
 
     We represent our solution via the :math:`(p + 1) \\times n` rectangular
     matrix:
@@ -568,9 +589,16 @@ class DG1Solver(object):
 
     :type dt: float
     :param dt: The timestep to use in the solver.
+
+    :type get_initial_data: callable
+    :param get_initial_data: (Optional) The function to use to evaluate
+                             :math:`u(x, 0)` at the points in our solution.
+                             Defaults to
+                             :func:`get_gaussian_like_initial_data`.
     """
 
-    def __init__(self, num_intervals, p_order, total_time, dt):
+    def __init__(self, num_intervals, p_order, total_time, dt,
+                 get_initial_data=None):
         self.num_intervals = num_intervals
         self.p_order = p_order
         self.total_time = total_time
@@ -582,24 +610,11 @@ class DG1Solver(object):
         self.node_points = get_node_points(self.num_intervals, self.p_order,
                                            step_size=self.step_size)
         # The solution: u(x, t).
-        self.solution = self._get_initial_data()
+        if get_initial_data is None:
+            get_initial_data = get_gaussian_like_initial_data
+        self.solution = get_initial_data(self.node_points)
         (self.mass_mat,
          self.stiffness_mat) = self.get_mass_and_stiffness_matrices()
-
-    def _get_initial_data(self):
-        """Get the initial solution data.
-
-        In this case it is
-
-        .. math::
-
-           u(x, 0) = \\exp\\left(-\\left(\\frac{x - \\frac{1}{2}}{0.1}
-                                 \\right)^2\\right)
-
-        :rtype: :class:`numpy.ndarray`
-        :returns: The :math:`u`-values at each node point.
-        """
-        return np.exp(-(self.node_points - 0.5)**2 / 0.01)
 
     def get_mass_and_stiffness_matrices(self):
         """Get the mass and stiffness matrices for the current solver.

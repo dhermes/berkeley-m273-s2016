@@ -341,6 +341,30 @@ class Test_make_lagrange_matrix(unittest.TestCase):
         self.assertTrue(np.all(result == expected_result))
 
 
+class Test_make_lagrange_matrix(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(node_points):
+        from assignment1.dg1 import get_gaussian_like_initial_data
+        return get_gaussian_like_initial_data(node_points)
+
+    def test_it(self):
+        import numpy as np
+        # We cheat and use the inverse.
+        #           E == exp(-25(2N - 1)^2)
+        # <==> log(E) == -25(2N - 1)^2
+        # <==> 2N - 1 == +/- SQRT(0.04 * log(1/E))
+        # <==>      N == 0.5 +/- SQRT(0.01 * log(1/E))
+        expected_result = 1.0 / np.array([
+            [3, 12, 8, 1],
+            [7, 7, 4, 9],
+            [2, 1, 5, 11],
+        ])
+        node_points = 0.5 + np.sqrt(0.01 * np.log(1.0/expected_result))
+        result = self._call_func_under_test(node_points)
+        self.assertTrue(np.allclose(result, expected_result))
+
+
 class TestPolynomialInterpolate(unittest.TestCase):
 
     @staticmethod
@@ -444,3 +468,148 @@ class TestPolynomialInterpolate(unittest.TestCase):
             [20, 12, 4],
         ]
         self.assertTrue(np.all(result == expected_result))
+
+
+class TestDG1Solver(unittest.TestCase):
+
+    def setUp(self):
+        self.num_intervals = 10
+        self.step_size = 0.1
+        self.num_steps = 500
+        self.dt = 2e-3
+        self.total_time = self.num_steps * self.dt
+
+    @staticmethod
+    def _get_target_class():
+        from assignment1.dg1 import DG1Solver
+        return DG1Solver
+
+    def _make_one(self, num_intervals, p_order, total_time, dt,
+                  get_initial_data=None):
+        return self._get_target_class()(num_intervals, p_order,
+                                        total_time, dt,
+                                        get_initial_data=get_initial_data)
+
+    def _constructor_helper(self, p_order, nodes, soln, mass_mat,
+                            stiffness_mat, get_initial_data=None):
+        solver = self._make_one(self.num_intervals, p_order, self.total_time,
+                                self.dt,
+                                get_initial_data=get_initial_data)
+        self.assertIsInstance(solver, self._get_target_class())
+        self.assertEqual(solver.num_intervals, self.num_intervals)
+        self.assertEqual(solver.p_order, p_order)
+        self.assertEqual(solver.total_time, self.total_time)
+        self.assertEqual(solver.dt, self.dt)
+        self.assertEqual(solver.current_step, 0)
+        self.assertEqual(solver.num_steps, self.num_steps)
+        self.assertEqual(solver.step_size, self.step_size)
+        self.assertEqual(solver.node_points, nodes)
+        self.assertEqual(solver.solution, soln)
+        self.assertEqual(solver.mass_mat, mass_mat)
+        self.assertEqual(solver.stiffness_mat, stiffness_mat)
+
+    @mock.patch('assignment1.dg1.get_node_points')
+    @mock.patch('assignment1.dg1.get_gaussian_like_initial_data')
+    def _constructor_small_p_helper(self, p_order, init_data, get_nodes):
+        # Set-up mocks.
+        get_nodes.return_value = nodes = object()
+        init_data.return_value = object()
+        mock_mass_base = mock.MagicMock()
+        mock_stiffness = object()
+        mock_mass_base.__rmul__.return_value = mock_mass = object()
+
+        patch_name = ('assignment1.dg1.'
+                      'mass_and_stiffness_matrices_p%d' % (p_order,))
+        with mock.patch(patch_name) as get_mats:
+            get_mats.return_value = mock_mass_base, mock_stiffness
+            self._constructor_helper(p_order, nodes, init_data.return_value,
+                                     mock_mass, mock_stiffness)
+        # Verify mocks were called.
+        get_nodes.assert_called_once_with(self.num_intervals, p_order,
+                                          step_size=self.step_size)
+        init_data.assert_called_once_with(nodes)
+        get_mats.assert_called_once_with()
+        mock_mass_base.__rmul__.assert_called_once_with(self.step_size)
+
+    def test_constructor_small_p(self):
+        self._constructor_small_p_helper(1)
+        self._constructor_small_p_helper(2)
+        self._constructor_small_p_helper(3)
+
+    @mock.patch('assignment1.dg1.get_node_points')
+    @mock.patch('assignment1.dg1.mass_and_stiffness_matrices_p1')
+    def test_constructor_explicit_init_data(self, get_mats, get_nodes):
+        # Set-up mocks.
+        get_nodes.return_value = nodes = object()
+        mock_mass_base = mock.MagicMock()
+        mock_stiffness = object()
+        get_mats.return_value = mock_mass_base, mock_stiffness
+        mock_mass_base.__rmul__.return_value = mock_mass = object()
+
+        init_data_obj = object()
+        init_data_points = []
+
+        def init_data(node_points):
+            init_data_points.append(node_points)
+            return init_data_obj
+
+        # Construct the object.
+        p_order = 1
+        self._constructor_helper(p_order, nodes, init_data_obj,
+                                 mock_mass, mock_stiffness,
+                                 get_initial_data=init_data)
+        # Verify mocks were called.
+        get_nodes.assert_called_once_with(self.num_intervals, p_order,
+                                          step_size=self.step_size)
+        self.assertEqual(init_data_points, [nodes])
+        get_mats.assert_called_once_with()
+        mock_mass_base.__rmul__.assert_called_once_with(self.step_size)
+
+    @mock.patch('assignment1.dg1.get_node_points')
+    @mock.patch('assignment1.dg1.find_matrices')
+    @mock.patch('assignment1.dg1.get_gaussian_like_initial_data')
+    def test_constructor_large_p(self, init_data, find_mats, get_nodes):
+        # Set-up mocks.
+        get_nodes.return_value = nodes = object()
+        init_data.return_value = object()
+        mock_mass_base = mock.MagicMock()
+        mock_stiffness = object()
+        find_mats.return_value = mock_mass_base, mock_stiffness
+        mock_mass_base.__rmul__.return_value = mock_mass = object()
+        # Construct the object.
+        p_order = 10
+        self._constructor_helper(p_order, nodes, init_data.return_value,
+                                 mock_mass, mock_stiffness)
+        # Verify mocks were called.
+        get_nodes.assert_called_once_with(self.num_intervals, p_order,
+                                          step_size=self.step_size)
+        init_data.assert_called_once_with(nodes)
+        find_mats.assert_called_once_with(p_order)
+        mock_mass_base.__rmul__.assert_called_once_with(self.step_size)
+
+    def test_constructor_no_mocks(self):
+        import numpy as np
+
+        def init_data(node_points):
+            return 2 * node_points
+
+        self.num_intervals = 2
+        self.step_size = 0.5
+        solver = self._make_one(self.num_intervals, 1,
+                                self.total_time, self.dt,
+                                get_initial_data=init_data)
+        self.assertIsInstance(solver, self._get_target_class())
+        self.assertEqual(solver.num_intervals, self.num_intervals)
+        self.assertEqual(solver.p_order, 1)
+        self.assertEqual(solver.total_time, self.total_time)
+        self.assertEqual(solver.dt, self.dt)
+        self.assertEqual(solver.current_step, 0)
+        self.assertEqual(solver.num_steps, self.num_steps)
+        self.assertEqual(solver.step_size, self.step_size)
+        expected_nodes = [
+            [0, 0.5],
+            [0.5, 1],
+        ]
+        self.assertTrue(np.all(solver.node_points == expected_nodes))
+        self.assertTrue(np.all(solver.solution == 2 * solver.node_points))
+        # No need to check the matrices.
