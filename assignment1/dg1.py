@@ -511,6 +511,28 @@ class PolynomialInterpolate(object):
         self.all_x = np.linspace(min_x, max_x, num_points)
         self.lagrange_matrix = make_lagrange_matrix(self.x_vals, self.all_x)
 
+    @classmethod
+    def from_solver(cls, solver, num_points=None):
+        """Polynomial interpolation factory from a solver.
+
+        The reference interval for the interpolation is assumed
+        to be in the first column of the :math:`x`-values stored
+        on the solver.
+
+        :type solver: :class:`DG1Solver`
+        :param solver: A solver containing :math:`x`-values.
+
+        :type num_points: int
+        :param num_points: (Optional) The number of points to use to represent
+                           the polynomial. Defaults to :data:`INTERVAL_POINTS`.
+
+        :rtype: :class:`PolynomialInterpolate`
+        :returns: Interpolation object for the reference
+        """
+        # Reference ``x``-values are in the first column.
+        x_vals = solver.node_points[:, 0]
+        return cls(x_vals, num_points=num_points)
+
     def interpolate(self, y_vals):
         """Evaluate interpolated polynomial given :math:`y`-values.
 
@@ -711,14 +733,20 @@ class DG1Animate(object):
     :type ax: :class:`matplotlib.artist.Artist`
     :param ax: (Optional) An axis to be used for plotting.
 
+    :type interp_points: int
+    :param interp_points: (Optional) The number of points to use to represent
+                          polynomials on an interval. Defaults to
+                          :data:`INTERVAL_POINTS`.
+
     :raises: :class:`ValueError <exceptions.ValueError>` if one of ``fig``
              or ``ax`` is passed, but not both.
     """
 
-    def __init__(self, solver, fig=None, ax=None):
+    def __init__(self, solver, fig=None, ax=None, interp_points=None):
         self.solver = solver
         # Computed values.
-        self.poly_interp_func = self._get_interpolation_func()
+        self.poly_interp_func = PolynomialInterpolate.from_solver(
+            solver, num_points=interp_points)
         self.plot_lines = None  # Will be updated in ``init_func``.
         self.fig = fig
         self.ax = ax

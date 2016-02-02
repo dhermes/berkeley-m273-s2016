@@ -420,6 +420,34 @@ class TestPolynomialInterpolate(unittest.TestCase):
         self.assertTrue(
             np.all(8 * interp_func.lagrange_matrix == expected_lagrange))
 
+    def test_from_solver_factory(self):
+        import numpy as np
+
+        klass = self._get_target_class()
+        solver = mock.MagicMock(node_points=np.array([
+            [0., 2., 4.],
+            [1., 3., 5.],
+        ]))
+        num_points = 5
+        interp_func = klass.from_solver(solver, num_points=num_points)
+        # x_vals are first column of mock node points
+        self.assertTrue(np.all(interp_func.x_vals == [0, 1]))
+        # Split the interval [0, 1] (given by the first column of x_vals)
+        # into num_points = 5 pieces.
+        self.assertTrue(np.all(interp_func.all_x ==
+                               [0.0, 0.25, 0.5, 0.75, 1.0]))
+        # The interpolating functions are L0(x) = 1 - x, L1(x) = x, evaluated
+        # at the points above.
+        expected_lagrange = [
+            [1.0, 0.0],
+            [0.75, 0.25],
+            [0.5, 0.5],
+            [0.25, 0.75],
+            [0.0, 1.0],
+        ]
+        self.assertTrue(np.all(interp_func.lagrange_matrix ==
+                               expected_lagrange))
+
     def test_interpolate_1D_data(self):
         import numpy as np
 
@@ -661,22 +689,17 @@ class TestDG1Animate(unittest.TestCase):
         from assignment1.dg1 import DG1Animate
         return DG1Animate
 
-    def _no_config_class(self, interp_func):
+    def _no_config_class(self):
         klass = self._get_target_class()
 
         class NoConfigSubclass(klass):
 
             config_called = False
-            get_interp_called = False
             plot_soln_count = 0
             plot_soln_last_color = None
 
             def _configure_axis(self):
                 self.__class__.config_called = True
-
-            def _get_interpolation_func(self):
-                self.__class__.get_interp_called = True
-                return interp_func
 
             def _plot_solution(self, color):
                 self.__class__.plot_soln_count += 1
@@ -685,16 +708,16 @@ class TestDG1Animate(unittest.TestCase):
         return NoConfigSubclass
 
     @mock.patch('matplotlib.pyplot.subplots', create=True)
-    def test_constructor_defaults(self, subplots):
+    @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver',
+                return_value=object())
+    def test_constructor_defaults(self, interp_factory, subplots):
         # Set-up mocks.
         fig = object()
         ax = object()
         subplots.return_value = fig, ax
         # Make a subclass which mocks out the constructor helpers.
-        interp_func = object()
-        subklass = self._no_config_class(interp_func)
+        subklass = self._no_config_class()
         self.assertFalse(subklass.config_called)
-        self.assertFalse(subklass.get_interp_called)
         self.assertEqual(subklass.plot_soln_count, 0)
         self.assertEqual(subklass.plot_soln_last_color, None)
         # Construct the object.
@@ -702,26 +725,33 @@ class TestDG1Animate(unittest.TestCase):
         animate_obj = subklass(solver)
         # Verify properties
         self.assertTrue(subklass.config_called)
-        self.assertTrue(subklass.get_interp_called)
         self.assertEqual(subklass.plot_soln_count, 1)
         self.assertEqual(subklass.plot_soln_last_color, 'red')
         self.assertEqual(animate_obj.solver, solver)
-        self.assertEqual(animate_obj.poly_interp_func, interp_func)
+        self.assertEqual(animate_obj.poly_interp_func,
+                         interp_factory.return_value)
         self.assertEqual(animate_obj.fig, fig)
         self.assertEqual(animate_obj.ax, ax)
         # Verify mock.
         subplots.assert_called_once_with(1, 1)
+        interp_factory.assert_called_once_with(solver, num_points=None)
 
-    def test_constructor_axis_with_no_figure(self):
+    @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver')
+    def test_constructor_axis_with_no_figure(self, interp_factory):
         # Make a subclass which mocks out the constructor helpers.
-        subklass = self._no_config_class(None)
+        subklass = self._no_config_class()
+        solver = object()
         # Fail to construct the object.
         with self.assertRaises(ValueError):
-            subklass(None, ax=object())
+            subklass(solver, ax=object())
+        interp_factory.assert_called_once_with(solver, num_points=None)
 
-    def test_constructor_figure_with_no_axis(self):
+    @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver')
+    def test_constructor_figure_with_no_axis(self, interp_factory):
         # Make a subclass which mocks out the constructor helpers.
-        subklass = self._no_config_class(None)
+        subklass = self._no_config_class()
+        solver = object()
         # Fail to construct the object.
         with self.assertRaises(ValueError):
-            subklass(None, fig=object())
+            subklass(solver, fig=object())
+        interp_factory.assert_called_once_with(solver, num_points=None)
