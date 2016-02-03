@@ -832,3 +832,42 @@ class TestDG1Animate(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._make_one(solver, fig=object())
         interp_factory.assert_called_once_with(solver, num_points=None)
+
+    @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver',
+                return_value=object())
+    @mock.patch('assignment1.dg1._configure_axis')
+    @mock.patch('assignment1.dg1._plot_solution')
+    def test_init_func(self, plot_soln, config_ax, interp_factory):
+        import numpy as np
+
+        # Set-up mocks.
+        num_cols = 1
+        solver = mock.MagicMock(
+            node_points=np.array([0, 1]).reshape(2, num_cols),
+            solution=[2, 3],
+        )
+        fig = object()
+        ax = object()
+        plot_line = mock.MagicMock()
+        plot_soln.return_value = [plot_line]
+        # Construct the object and call the method under test.
+        animate_obj = self._make_one(solver, fig=fig, ax=ax)
+        plot_lines = animate_obj.init_func()
+        self.assertEqual(plot_lines, plot_soln.return_value)
+        # Verify mocks were called.
+        config_ax.assert_called_once_with(ax, x_min=0, x_max=1,
+                                          y_min=2, y_max=3)
+        self.assertEqual(len(plot_soln.mock_calls), 2)
+        self.assertEqual(
+            plot_soln.mock_calls[0],
+            mock.call('red', num_cols, interp_factory.return_value,
+                      solver, ax),
+        )
+        interp_factory.assert_called_once_with(solver, num_points=None)
+        self.assertEqual(
+            plot_soln.mock_calls[1],
+            mock.call('blue', num_cols, interp_factory.return_value,
+                      solver, ax),
+        )
+        interp_factory.assert_called_once_with(solver, num_points=None)
+        plot_line.set_visible.assert_called_once_with(False)
