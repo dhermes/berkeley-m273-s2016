@@ -566,6 +566,40 @@ class PolynomialInterpolate(object):
 # pylint: enable=too-few-public-methods
 
 
+def _plot_solution(color, num_cols, interp_func, solver, ax):
+    """Plot the solution and return the newly created lines.
+
+    :type color: str
+    :param color: The color to use in plotting the solution.
+
+    :type num_cols: int
+    :param num_cols: The number of columsn in the ``solution``.
+
+    :type interp_func: :class:`PolynomialInterpolate`
+    :param interp_func: The polynomial interpolation object used to map
+                        a solution onto a set of points.
+
+    :type solver: :class:`DG1Solver`
+    :param solver: A solver containing a ``solution`` and ``node_points``.
+
+    :type ax: :class:`matplotlib.artist.Artist`
+    :param ax: An axis to be used for plotting.
+
+    :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
+    :returns: List of the updated matplotlib line objects.
+    """
+    plot_lines = []
+    all_y = interp_func.interpolate(solver.solution)
+    for index in six.moves.xrange(num_cols):
+        x_start = solver.node_points[0, index]
+        line, = ax.plot(x_start + interp_func.all_x,
+                        all_y[:, index],
+                        color=color, linewidth=2)
+        plot_lines.append(line)
+
+    return plot_lines
+
+
 class DG1Solver(object):
     """Discontinuous Galerkin (DG) solver for the 1D conservation law
 
@@ -767,38 +801,6 @@ class DG1Animate(object):
         self.ax.set_ylim(0 - 0.1, 1 + 0.1)
         self.ax.grid(b=True)  # b == boolean, 'on'/'off'
 
-    def _get_interpolation_func(self):
-        """Get polynomial interpolation object for reference interval.
-
-        :rtype: :class:`PolynomialInterpolate`
-        :returns: Interpolation object for the reference
-        """
-        # Reference ``x``-values are in the first column.
-        x_vals = self.solver.node_points[:, 0]
-        return PolynomialInterpolate(x_vals)
-
-    def _plot_solution(self, color):
-        """Plot the solution and return the newly created lines.
-
-        :type color: str
-        :param color: The color to use in plotting the solution.
-
-        :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
-        :returns: List of the updated matplotlib line objects.
-        """
-        _, num_cols = self.solver.node_points.shape
-        plot_lines = []
-        interp_func = self.poly_interp_func
-        all_y = interp_func.interpolate(self.solver.solution)
-        for index in six.moves.xrange(num_cols):
-            x_start = self.solver.node_points[0, index],
-            line, = self.ax.plot(x_start + interp_func.all_x,
-                                 all_y[:, index],
-                                 color=color, linewidth=2)
-            plot_lines.append(line)
-
-        return plot_lines
-
     def init_func(self):
         """An initialization function for the animation.
 
@@ -811,10 +813,13 @@ class DG1Animate(object):
         # Pre-configure the axes and the background data.
         self._configure_axis()
         # Plot the initial data (in red) to compare against.
-        self._plot_solution('red')
+        _, num_cols = self.solver.node_points.shape
+        _plot_solution('red', num_cols, self.poly_interp_func,
+                       self.solver, self.ax)
 
         # Plot the same data (in blue) and store the lines.
-        self.plot_lines = self._plot_solution('blue')
+        self.plot_lines = _plot_solution(
+            'blue', num_cols, self.poly_interp_func, self.solver, self.ax)
         # For ``init_func`` with ``blit`` turned on, the initial
         # frame should not have visible lines. See
         # http://stackoverflow.com/q/21439489/1068170 for more info.
