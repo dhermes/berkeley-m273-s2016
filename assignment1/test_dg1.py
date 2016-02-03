@@ -498,69 +498,6 @@ class TestPolynomialInterpolate(unittest.TestCase):
         self.assertTrue(np.all(result == expected_result))
 
 
-class Test__plot_solution(unittest.TestCase):
-
-    @staticmethod
-    def _call_func_under_test(color, num_cols, interp_func,
-                              solver, ax):
-        from assignment1.dg1 import _plot_solution
-        return _plot_solution(color, num_cols, interp_func, solver, ax)
-
-    def test_it(self):
-        import sympy
-
-        # Create mock DG1Solver.
-        node_points = sympy.Matrix([
-            [42, 1337],
-        ])
-        solution = object()
-        solver = mock.MagicMock(
-            node_points=node_points,
-            solution=solution,
-        )
-        # Create mock PolynomialInterpolate.
-        all_x = 99
-        interp_func = mock.MagicMock(
-            all_x=all_x,
-        )
-        y_vals = sympy.Matrix([
-            [10, 100],
-            [11, 200],
-        ])
-        interp_func.interpolate.return_value = y_vals
-        # Create mock axis.
-        ax = mock.MagicMock()
-        line_obj = object()
-        ax.plot.return_value = (line_obj,)
-        # Call the method.
-        num_cols = 2
-        color = 'green'
-        result = self._call_func_under_test(
-            color, num_cols, interp_func, solver, ax)
-        # Verify result (lines come from ax.plot mock).
-        self.assertEqual(result, [line_obj] * num_cols)
-        # Verify mocks were called.
-        interp_func.interpolate.assert_called_once_with(solution)
-        plot_calls = ax.plot.mock_calls
-        self.assertEqual(len(plot_calls), 2)
-        self.assertEqual(
-            plot_calls[0],
-            mock.call(
-                all_x + node_points[0, 0],
-                y_vals[:, 0],
-                color=color, linewidth=2,
-            ),
-        )
-        self.assertEqual(
-            plot_calls[1],
-            mock.call(
-                all_x + node_points[0, 1],
-                y_vals[:, 1],
-                color=color, linewidth=2,
-            ),
-        )
-
-
 class TestDG1Solver(unittest.TestCase):
 
     def setUp(self):
@@ -743,6 +680,107 @@ class TestDG1Solver(unittest.TestCase):
         # Verify mock.
         rk_method.assert_called_once_with(solver.ode_func,
                                           orig_soln, solver.dt)
+
+
+class Test__plot_solution(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(color, num_cols, interp_func,
+                              solver, ax):
+        from assignment1.dg1 import _plot_solution
+        return _plot_solution(color, num_cols, interp_func, solver, ax)
+
+    def test_it(self):
+        import sympy
+
+        # Create mock DG1Solver.
+        node_points = sympy.Matrix([
+            [42, 1337],
+        ])
+        solution = object()
+        solver = mock.MagicMock(
+            node_points=node_points,
+            solution=solution,
+        )
+        # Create mock PolynomialInterpolate.
+        all_x = 99
+        interp_func = mock.MagicMock(
+            all_x=all_x,
+        )
+        y_vals = sympy.Matrix([
+            [10, 100],
+            [11, 200],
+        ])
+        interp_func.interpolate.return_value = y_vals
+        # Create mock axis.
+        ax = mock.MagicMock()
+        line_obj = object()
+        ax.plot.return_value = (line_obj,)
+        # Call the method.
+        num_cols = 2
+        color = 'green'
+        result = self._call_func_under_test(
+            color, num_cols, interp_func, solver, ax)
+        # Verify result (lines come from ax.plot mock).
+        self.assertEqual(result, [line_obj] * num_cols)
+        # Verify mocks were called.
+        interp_func.interpolate.assert_called_once_with(solution)
+        plot_calls = ax.plot.mock_calls
+        self.assertEqual(len(plot_calls), 2)
+        self.assertEqual(
+            plot_calls[0],
+            mock.call(
+                all_x + node_points[0, 0],
+                y_vals[:, 0],
+                color=color, linewidth=2,
+            ),
+        )
+        self.assertEqual(
+            plot_calls[1],
+            mock.call(
+                all_x + node_points[0, 1],
+                y_vals[:, 1],
+                color=color, linewidth=2,
+            ),
+        )
+
+
+class Test__configure_axis(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(ax, **kwargs):
+        from assignment1.dg1 import _configure_axis
+        return _configure_axis(ax, **kwargs)
+
+    def test_defaults(self):
+        # Make ax a mock.
+        ax = mock.MagicMock()
+        # Call function.
+        result = self._call_func_under_test(ax)
+        self.assertEqual(result, None)
+        # Verify mocks were called.
+        ax.set_xlim.assert_called_once_with(0.0, 1.0)
+        ax.set_ylim.assert_called_once_with(-0.1, 1.1)
+        ax.grid.assert_called_once_with(b=True)
+
+    def test_explicit(self):
+        # Make ax a mock.
+        ax = mock.MagicMock()
+        # Call function.
+        x_min = 1.2
+        x_max = 3.4
+        y_min = 5.6
+        y_max = 7.8
+        y_buffer = 1000.0
+        result = self._call_func_under_test(ax, x_min=x_min, x_max=x_max,
+                                            y_min=y_min, y_max=y_max,
+                                            y_buffer=y_buffer)
+        self.assertEqual(result, None)
+        # Verify mocks were called.
+        ax.set_xlim.assert_called_once_with(x_min, x_max)
+        ax.set_ylim.assert_called_once_with(y_min - y_buffer,
+                                            y_max + y_buffer)
+        ax.grid.assert_called_once_with(b=True)
 
 
 class TestDG1Animate(unittest.TestCase):

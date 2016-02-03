@@ -566,40 +566,6 @@ class PolynomialInterpolate(object):
 # pylint: enable=too-few-public-methods
 
 
-def _plot_solution(color, num_cols, interp_func, solver, ax):
-    """Plot the solution and return the newly created lines.
-
-    :type color: str
-    :param color: The color to use in plotting the solution.
-
-    :type num_cols: int
-    :param num_cols: The number of columsn in the ``solution``.
-
-    :type interp_func: :class:`PolynomialInterpolate`
-    :param interp_func: The polynomial interpolation object used to map
-                        a solution onto a set of points.
-
-    :type solver: :class:`DG1Solver`
-    :param solver: A solver containing a ``solution`` and ``node_points``.
-
-    :type ax: :class:`matplotlib.artist.Artist`
-    :param ax: An axis to be used for plotting.
-
-    :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
-    :returns: List of the updated matplotlib line objects.
-    """
-    plot_lines = []
-    all_y = interp_func.interpolate(solver.solution)
-    for index in six.moves.xrange(num_cols):
-        x_start = solver.node_points[0, index]
-        line, = ax.plot(x_start + interp_func.all_x,
-                        all_y[:, index],
-                        color=color, linewidth=2)
-        plot_lines.append(line)
-
-    return plot_lines
-
-
 class DG1Solver(object):
     """Discontinuous Galerkin (DG) solver for the 1D conservation law
 
@@ -750,11 +716,79 @@ class DG1Solver(object):
         self.current_step += 1
 
 
+def _plot_solution(color, num_cols, interp_func, solver, ax):
+    """Plot the solution and return the newly created lines.
+
+    Helper for :class:`DG1Animate`.
+
+    :type color: str
+    :param color: The color to use in plotting the solution.
+
+    :type num_cols: int
+    :param num_cols: The number of columsn in the ``solution``.
+
+    :type interp_func: :class:`PolynomialInterpolate`
+    :param interp_func: The polynomial interpolation object used to map
+                        a solution onto a set of points.
+
+    :type solver: :class:`DG1Solver`
+    :param solver: A solver containing a ``solution`` and ``node_points``.
+
+    :type ax: :class:`matplotlib.artist.Artist`
+    :param ax: An axis to be used for plotting.
+
+    :rtype: :class:`list` of :class:`matplotlib.lines.Line2D`
+    :returns: List of the updated matplotlib line objects.
+    """
+    plot_lines = []
+    all_y = interp_func.interpolate(solver.solution)
+    for index in six.moves.xrange(num_cols):
+        x_start = solver.node_points[0, index]
+        line, = ax.plot(x_start + interp_func.all_x,
+                        all_y[:, index],
+                        color=color, linewidth=2)
+        plot_lines.append(line)
+
+    return plot_lines
+
+
+def _configure_axis(ax, x_min=0.0, x_max=1.0, y_min=0.0,
+                    y_max=1.0, y_buffer=0.1):
+    """Configure an axis for plotting.
+
+    Sets the (buffered) bounding box and turns on the grid.
+
+    Helper for :class:`DG1Animate`.
+
+    :type ax: :class:`matplotlib.artist.Artist`
+    :param ax: An axis to be used for plotting.
+
+    :type x_min: float
+    :param x_min: The minimum :math:`x`-value in the plot.
+
+    :type x_max: float
+    :param x_max: The maximum :math:`x`-value in the plot.
+
+    :type y_min: float
+    :param y_min: The minimum :math:`y`-value in the plot.
+
+    :type y_max: float
+    :param y_max: The maximum :math:`y`-value in the plot.
+
+    :type y_buffer: float
+    :param y_buffer: A buffer to allow for noise in a solution
+                     in the :math:`y`-direction.
+    """
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min - y_buffer, y_max + y_buffer)
+    ax.grid(b=True)  # b == boolean, 'on'/'off'
+
+
 class DG1Animate(object):
     """Helper for animating a solution.
 
-    Assumes the ``solver`` operates on :math:`x \\in \\left[0, 1\\right]`
-    and the solution :math:`u(x, t) \\in \\left[0, 1\\right]` (give
+    Assumes the solution (which is updated via ``solver``) produces
+    a solution that remains in the same bounding box as :math:`u(x, 0)` (give
     or take some noise).
 
     :type solver: :class:`DG1Solver`
@@ -795,12 +829,6 @@ class DG1Animate(object):
         if self.ax is None:
             raise ValueError('Received a figure but no axis.')
 
-    def _configure_axis(self):
-        """Configure the axis for plotting."""
-        self.ax.set_xlim(0, 1)
-        self.ax.set_ylim(0 - 0.1, 1 + 0.1)
-        self.ax.grid(b=True)  # b == boolean, 'on'/'off'
-
     def init_func(self):
         """An initialization function for the animation.
 
@@ -811,7 +839,12 @@ class DG1Animate(object):
                   with length equal to :math:`n` (coming from ``solver``).
         """
         # Pre-configure the axes and the background data.
-        self._configure_axis()
+        x_min = np.min(self.solver.node_points)
+        x_max = np.max(self.solver.node_points)
+        y_min = np.min(self.solver.solution)
+        y_max = np.max(self.solver.solution)
+        _configure_axis(self.ax, x_min=x_min, x_max=x_max,
+                        y_min=y_min, y_max=y_max)
         # Plot the initial data (in red) to compare against.
         _, num_cols = self.solver.node_points.shape
         _plot_solution('red', num_cols, self.poly_interp_func,
