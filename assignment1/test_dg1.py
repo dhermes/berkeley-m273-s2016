@@ -871,3 +871,75 @@ class TestDG1Animate(unittest.TestCase):
         )
         interp_factory.assert_called_once_with(solver, num_points=None)
         plot_line.set_visible.assert_called_once_with(False)
+
+    @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver')
+    def test_update_plot_frame_zero(self, interp_factory):
+        import sympy
+
+        # Set-up mocks.
+        solver = mock.MagicMock(
+            current_step=0,
+            solution=object(),
+        )
+        fig = ax = object()
+        poly_interp = mock.MagicMock()
+        poly_interp.interpolate.return_value = sympy.Matrix([[0, 0]])
+        interp_factory.return_value = poly_interp
+        plot_line = mock.MagicMock()
+        # Construct the object and call the method under test.
+        animate_obj = self._make_one(solver, fig=fig, ax=ax)
+        animate_obj.plot_lines = [plot_line]
+        plot_lines = animate_obj.update_plot(solver.current_step)
+        self.assertEqual(plot_lines, animate_obj.plot_lines)
+        # Verify mocks were called.
+        plot_line.set_visible.assert_called_once_with(True)
+        solver.update.assert_called_once_with()
+        poly_interp.interpolate.assert_called_once_with(solver.solution)
+        plot_line.set_ydata.assert_called_once_with(sympy.Matrix([[0]]))
+
+    @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver')
+    def test_update_plot_frame_nonzero(self, interp_factory):
+        import sympy
+
+        # Set-up mocks.
+        solver = mock.MagicMock(
+            current_step=10203,
+            solution=object(),
+        )
+        fig = ax = object()
+        poly_interp = mock.MagicMock()
+        poly_interp.interpolate.return_value = sympy.Matrix([[0, 0]])
+        interp_factory.return_value = poly_interp
+        plot_line = mock.MagicMock()
+        # Construct the object and call the method under test.
+        animate_obj = self._make_one(solver, fig=fig, ax=ax)
+        animate_obj.plot_lines = [plot_line]
+        plot_lines = animate_obj.update_plot(solver.current_step)
+        self.assertEqual(plot_lines, animate_obj.plot_lines)
+        # Verify mocks were called.
+        plot_line.set_visible.assert_not_called()
+        solver.update.assert_called_once_with()
+        poly_interp.interpolate.assert_called_once_with(solver.solution)
+        plot_line.set_ydata.assert_called_once_with(sympy.Matrix([[0]]))
+
+    @mock.patch('assignment1.dg1.PolynomialInterpolate.from_solver')
+    def test_update_plot_mismatch_frame(self, interp_factory):
+        # Set-up mocks.
+        solver = mock.MagicMock(
+            current_step=10203,
+            solution=object(),
+        )
+        fig = ax = object()
+        poly_interp = mock.MagicMock()
+        interp_factory.return_value = poly_interp
+        plot_line = mock.MagicMock()
+        # Construct the object and call the method under test.
+        animate_obj = self._make_one(solver, fig=fig, ax=ax)
+        animate_obj.plot_lines = [plot_line]
+        with self.assertRaises(ValueError):
+            animate_obj.update_plot(-1)
+        # Verify mocks were called.
+        plot_line.set_visible.assert_not_called()
+        solver.update.assert_not_called()
+        poly_interp.interpolate.assert_not_called()
+        plot_line.set_ydata.assert_not_called()
