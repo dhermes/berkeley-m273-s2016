@@ -202,6 +202,7 @@ class Test_get_legendre_matrix(unittest.TestCase):
         points = np.linspace(0, 1, num_points)
         result = self._call_func_under_test(points)
         self.assertEqual(result.shape, (num_points, num_points))
+        self.assertTrue(result.flags.f_contiguous)
         expected_result = np.zeros((num_points, num_points))
         for n in six.moves.xrange(num_points):
             leg_coeffs = [0] * n + [1]
@@ -223,6 +224,7 @@ class Test_get_legendre_matrix(unittest.TestCase):
         result = self._call_func_under_test(points,
                                             max_degree=max_degree)
         self.assertEqual(result.shape, (num_nodes, max_degree + 1))
+        self.assertTrue(result.flags.f_contiguous)
         expected_result = np.zeros((num_nodes, max_degree + 1))
         for n in six.moves.xrange(max_degree + 1):
             leg_coeffs = [0] * n + [1]

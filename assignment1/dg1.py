@@ -264,7 +264,8 @@ def get_legendre_matrix(points, max_degree=None):
     num_points, = points.shape
     if max_degree is None:
         max_degree = num_points - 1
-    result = np.zeros((num_points, max_degree + 1))
+    # Use Fortran order since we operator on columns.
+    result = np.zeros((num_points, max_degree + 1), order='F')
     result[:, 0] = 1.0
     result[:, 1] = points
     for degree in six.moves.xrange(2, max_degree + 1):
