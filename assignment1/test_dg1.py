@@ -186,6 +186,31 @@ class Test_mass_and_stiffness_matrices_p3(unittest.TestCase):
         self.assertTrue(np.all(stiffness_mat1 == stiffness_mat2))
 
 
+class Test_get_legendre_matrix(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(points):
+        from assignment1.dg1 import get_legendre_matrix
+        return get_legendre_matrix(points)
+
+    def test_evenly_spaced(self):
+        import numpy as np
+        from numpy.polynomial import legendre
+        import six
+
+        num_points = 17
+        points = np.linspace(0, 1, num_points)
+        result = self._call_func_under_test(points)
+        self.assertEqual(result.shape, (num_points, num_points))
+        expected_result = np.zeros((num_points, num_points))
+        for n in six.moves.xrange(num_points):
+            leg_coeffs = [0] * n + [1]
+            expected_result[:, n] = legendre.legval(points, leg_coeffs)
+        self.assertTrue(np.allclose(result, expected_result))
+        frob_err = np.linalg.norm(result - expected_result, ord='fro')
+        self.assertTrue(frob_err < 1e-13)
+
+
 class Test_find_matrices(unittest.TestCase):
 
     @staticmethod

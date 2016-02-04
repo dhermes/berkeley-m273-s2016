@@ -227,6 +227,44 @@ def mass_and_stiffness_matrices_p3():
     return mass_mat, stiffness_mat
 
 
+def get_legendre_matrix(points):
+    """Evaluate Legendre polynomials at a set of points.
+
+    If our points are :math:`x_0, \\ldots, x_p`, this computes
+
+    .. math::
+
+       \\left[ \\begin{array}{c c c c}
+         L_0(x_0) & L_1(x_0) & \\cdots & L_p(x_0) \\\\
+         L_0(x_1) & L_1(x_1) & \\cdots & L_1(x_p) \\\\
+         \\vdots  & \\vdots  & \\ddots & \\vdots  \\\\
+         L_0(x_p) & L_1(x_p) & \\cdots & L_p(x_p)
+       \\end{array}\\right]
+
+    by utilizing the recurrence
+
+    .. math::
+
+        n L_n(x) = (2n - 1) x L_{n - 1}(x) - (n - 1) L_{n - 2}(x)
+
+    :type points: :class:`numpy.ndarray`
+    :param points: 1D array. The points at which to evaluate Legendre
+                   polynomials.
+
+    :rtype: :class:`numpy.ndarray`
+    :returns: The 2D array containing the Legendre polynomials evaluated
+              at our input points.
+    """
+    num_points, = points.shape
+    result = np.zeros((num_points, num_points))
+    result[:, 0] = 1.0
+    result[:, 1] = points
+    for n in xrange(2, num_points):
+        result[:, n] = ((2 * n - 1) * points * result[:, n - 1] -
+                        (n - 1) * result[:, n - 2]) / n
+    return result
+
+
 def find_matrices(p_order):
     """Find mass and stiffness matrices.
 
@@ -269,7 +307,8 @@ def find_matrices(p_order):
 
     This method uses Gaussian quadrature to evaluate the integrals.
     The largest degree integrand :math:`\\varphi_i \\varphi_j` has
-    degree :math:`2 p` so we use :math:`n = p + 1` points to ensure
+    degree :math:`2 p` so we use :math:`n = p + 1` points (accurate
+    up to degree :math:`2(p + 1) - 1 = 2p + 1`) to ensure
     that the quadrature is exact.
 
     :type p_order: int
