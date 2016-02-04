@@ -189,9 +189,9 @@ class Test_mass_and_stiffness_matrices_p3(unittest.TestCase):
 class Test_get_legendre_matrix(unittest.TestCase):
 
     @staticmethod
-    def _call_func_under_test(points):
+    def _call_func_under_test(points, max_degree=None):
         from assignment1.dg1 import get_legendre_matrix
-        return get_legendre_matrix(points)
+        return get_legendre_matrix(points, max_degree=max_degree)
 
     def test_evenly_spaced(self):
         import numpy as np
@@ -204,6 +204,27 @@ class Test_get_legendre_matrix(unittest.TestCase):
         self.assertEqual(result.shape, (num_points, num_points))
         expected_result = np.zeros((num_points, num_points))
         for n in six.moves.xrange(num_points):
+            leg_coeffs = [0] * n + [1]
+            expected_result[:, n] = legendre.legval(points, leg_coeffs)
+        self.assertTrue(np.allclose(result, expected_result))
+        frob_err = np.linalg.norm(result - expected_result, ord='fro')
+        self.assertTrue(frob_err < 1e-13)
+
+    def test_chebyshev_explicit_degree(self):
+        import numpy as np
+        from numpy.polynomial import legendre
+        import six
+
+        num_nodes = 8
+        theta = np.pi * np.arange(2 * num_nodes - 1, 0, -2,
+                                  dtype=np.float64) / (2 * num_nodes)
+        points = np.cos(theta)
+        max_degree = 40
+        result = self._call_func_under_test(points,
+                                            max_degree=max_degree)
+        self.assertEqual(result.shape, (num_nodes, max_degree + 1))
+        expected_result = np.zeros((num_nodes, max_degree + 1))
+        for n in six.moves.xrange(max_degree + 1):
             leg_coeffs = [0] * n + [1]
             expected_result[:, n] = legendre.legval(points, leg_coeffs)
         self.assertTrue(np.allclose(result, expected_result))

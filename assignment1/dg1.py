@@ -227,7 +227,7 @@ def mass_and_stiffness_matrices_p3():
     return mass_mat, stiffness_mat
 
 
-def get_legendre_matrix(points):
+def get_legendre_matrix(points, max_degree=None):
     """Evaluate Legendre polynomials at a set of points.
 
     If our points are :math:`x_0, \\ldots, x_p`, this computes
@@ -235,10 +235,10 @@ def get_legendre_matrix(points):
     .. math::
 
        \\left[ \\begin{array}{c c c c}
-         L_0(x_0) & L_1(x_0) & \\cdots & L_p(x_0) \\\\
-         L_0(x_1) & L_1(x_1) & \\cdots & L_1(x_p) \\\\
+         L_0(x_0) & L_1(x_0) & \\cdots & L_d(x_0) \\\\
+         L_0(x_1) & L_1(x_1) & \\cdots & L_d(x_p) \\\\
          \\vdots  & \\vdots  & \\ddots & \\vdots  \\\\
-         L_0(x_p) & L_1(x_p) & \\cdots & L_p(x_p)
+         L_0(x_p) & L_1(x_p) & \\cdots & L_d(x_p)
        \\end{array}\\right]
 
     by utilizing the recurrence
@@ -251,17 +251,26 @@ def get_legendre_matrix(points):
     :param points: 1D array. The points at which to evaluate Legendre
                    polynomials.
 
+    :type max_degree: int
+    :param max_degree: (Optional) The maximum degree of Legendre
+                       polynomial to use. Defaults to one less than the
+                       number of points (which will produce a square
+                       output).
+
     :rtype: :class:`numpy.ndarray`
     :returns: The 2D array containing the Legendre polynomials evaluated
               at our input points.
     """
     num_points, = points.shape
-    result = np.zeros((num_points, num_points))
+    if max_degree is None:
+        max_degree = num_points - 1
+    result = np.zeros((num_points, max_degree + 1))
     result[:, 0] = 1.0
     result[:, 1] = points
-    for n in xrange(2, num_points):
-        result[:, n] = ((2 * n - 1) * points * result[:, n - 1] -
-                        (n - 1) * result[:, n - 2]) / n
+    for degree in six.moves.xrange(2, max_degree + 1):
+        result[:, degree] = (
+            (2 * degree - 1) * points * result[:, degree - 1] -
+            (degree - 1) * result[:, degree - 2]) / degree
     return result
 
 
