@@ -13,7 +13,6 @@ solve the problem.
 
 import numpy as np
 from numpy.polynomial import legendre
-from numpy.polynomial import polynomial
 import six
 import sympy
 
@@ -286,22 +285,31 @@ def find_matrices(p_order):
        x_0 = 0, x_1 = 1/p, \\ldots, x_p = 1
 
     and compute the polynomials :math:`\\varphi_j(x)` such that
-    :math:`\\varphi_j\\left(x_i\\right) = \\delta_{ij}`. We do this directly
-    inverting the Vandermonde matrix :math:`V` such that
+    :math:`\\varphi_j\\left(x_i\\right) = \\delta_{ij}`. We do this by
+    writing
 
-        .. math::
+    .. math::
 
-           \\left[ \\begin{array}{c c c c}
-                    1 & x_0 & \\cdots & x_0^p \\\\
-                    1 & x_1 & \\cdots & x_1^p \\\\
-                    \\vdots & & & \\vdots \\\\
-                    1 & x_p & \\cdots & x_p^p
-                    \\end{array}\\right]
-           \\left[ \\begin{array}{c} c_0 \\\\
-                                     c_1 \\\\
-                                   \\vdots \\\\
-                                     c_p \\end{array}\\right]
-           = \\left(\\delta_{ij}\\right) = I_{p + 1}
+       \\varphi_j(x) = \\sum_n c_n^{(j)} L_n(x)
+
+    where :math:`L_n(x)` is the Legendre polynomial of degree :math:`n`.
+    With this representation, we need to solve
+
+    .. math::
+
+       \\left[ \\begin{array}{c c c c}
+         L_0(x_0) & L_1(x_0) & \\cdots & L_p(x_0) \\\\
+         L_0(x_1) & L_1(x_1) & \\cdots & L_p(x_p) \\\\
+         \\vdots  & \\vdots  & \\ddots & \\vdots  \\\\
+         L_0(x_p) & L_1(x_p) & \\cdots & L_p(x_p)
+       \\end{array}\\right]
+       \\left[ \\begin{array}{c}
+         c_0^{(0)} & c_0^{(1)} & \\cdots & c_0^{(p)} \\\\
+         c_1^{(0)} & c_1^{(1)} & \\cdots & c_1^{(p)} \\\\
+           \\vdots &   \\vdots & \\ddots & \\vdots   \\\\
+         c_p^{(0)} & c_p^{(1)} & \\cdots & c_p^{(p)}
+       \\end{array}\\right]
+       = \\left(\\delta_{ij}\\right) = I_{p + 1}
 
     Then use these to compute the mass matrix
 
@@ -337,14 +345,10 @@ def find_matrices(p_order):
 
     # Now create the Vandermonde matrix and invert.
     x_vals = np.arange(p_order + 1, dtype=np.float64) / p_order
-    vand_mat = np.zeros((p_order + 1, p_order + 1))
-    for i in six.moves.xrange(p_order + 1):
-        for j in six.moves.xrange(p_order + 1):
-            vand_mat[i, j] = x_vals[i]**j
-    coeff_mat = np.linalg.inv(vand_mat)
+    coeff_mat = np.linalg.inv(get_legendre_matrix(x_vals))
 
     # Evaluate the PHI_i at the Legendre points.
-    phi_vals = polynomial.polyval(leg_pts, coeff_mat)
+    phi_vals = legendre.legval(leg_pts, coeff_mat)
     # The rows correspond to the polynomials while the
     # columns correspond to the values in ``leg_pts``.
 
@@ -353,8 +357,8 @@ def find_matrices(p_order):
     stiffness_mat = np.zeros((p_order + 1, p_order + 1))
     for i in six.moves.xrange(p_order + 1):
         phi_i = phi_vals[i, :]
-        phi_i_prime = polynomial.polyval(
-            leg_pts, polynomial.polyder(coeff_mat[:, i]))
+        phi_i_prime = legendre.legval(
+            leg_pts, legendre.legder(coeff_mat[:, i]))
         for j in six.moves.xrange(i, p_order + 1):
             phi_j = phi_vals[j, :]
             mass_mat[i, j] = (phi_i * phi_j).dot(leg_weights)
