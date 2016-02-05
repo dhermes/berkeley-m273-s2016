@@ -233,6 +233,35 @@ class Test_get_legendre_matrix(unittest.TestCase):
         frob_err = np.linalg.norm(result - expected_result, ord='fro')
         self.assertTrue(frob_err < 1e-13)
 
+    def _evenly_spaced_condition_num_helper(self, p_order):
+        import numpy as np
+
+        x_vals = np.arange(p_order + 1, dtype=np.float64) / p_order
+        leg_mat = self._call_func_under_test(x_vals)
+        kappa2 = np.linalg.cond(leg_mat, p=2)
+        # This gives the exponent of kapp2.
+        return int(np.round(52 + np.log2(np.spacing(kappa2))))
+
+    def test_evenly_spaced_condition_num(self):
+        # Demonstrate ill-conditioning
+        import six
+
+        # 2^exponent <= kappa2 < 2^(exponent + 1)
+        expected_exponents = {
+            1: 1,
+            2: 3,
+            3: 6,
+            4: 9,
+            5: 11,
+            6: 14,
+            7: 17,
+            8: 20,
+            9: 23,
+        }
+        for i in six.moves.xrange(1, 9 + 1):
+            kappa_expon = self._evenly_spaced_condition_num_helper(i)
+            self.assertEqual(kappa_expon, expected_exponents[i])
+
 
 class Test_find_matrices(unittest.TestCase):
 
