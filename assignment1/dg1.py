@@ -226,6 +226,47 @@ def mass_and_stiffness_matrices_p3():
     return mass_mat, stiffness_mat
 
 
+def gauss_lobatto_info(num_points):
+    """Get the node points and weights for Gauss-Lobatto quadrature.
+
+    Using :math:`n` points, this quadrature is accurate to degree
+    :math:`2n - 3`. The node points are :math:`x_1 = -1`,
+    :math:`x_n = 1` and the interior are :math:`n - 2` roots of
+    :math:`P'_{n - 1}(x)`.
+
+    Using these, the weights are :math:`w_1 = w_n = \\frac{2}{n(n - 1)}`
+    and for the interior points
+
+    .. math::
+
+       w_j = \\frac{2}{n(n - 1) \\left[P_{n - 1}\\left(x_j\\right)\\right]^2}
+
+    This is in contrast to the points used in Gaussian quadrature, which
+    use the weights
+
+    .. math::
+
+       w_j = \\frac{2}{\\left(1 - x_j\\right)^2
+                \\left[P'_n\\left(x_j\\right)\\right]^2}
+
+    :type num_points: int
+    :param num_points: The number of points to use.
+
+    :rtype: tuple
+    :returns: Pair of 1D :class:`numpy.ndarray`, with the first
+              value the interior quadrature nodes and the second
+              value the weights for those nodes.
+    """
+    p_n_minus1 = [0] * (num_points - 1) + [1]
+    inner_nodes = legendre.legroots(legendre.legder(p_n_minus1))
+    # Utilize symmetry about 0.
+    inner_nodes = 0.5 * (inner_nodes - inner_nodes[::-1])
+    base_weight = 2.0 / (num_points * (num_points - 1))
+    p_n_minus1_at_nodes = legendre.legval(inner_nodes, p_n_minus1)
+    inner_weights = base_weight / p_n_minus1_at_nodes**2
+    return inner_nodes, inner_weights
+
+
 def get_legendre_matrix(points, max_degree=None):
     """Evaluate Legendre polynomials at a set of points.
 

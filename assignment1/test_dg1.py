@@ -186,12 +186,91 @@ class Test_mass_and_stiffness_matrices_p3(unittest.TestCase):
         self.assertTrue(np.all(stiffness_mat1 == stiffness_mat2))
 
 
+class Test_gauss_lobatto_info(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(num_points):
+        from assignment1.dg1 import gauss_lobatto_info
+        return gauss_lobatto_info(num_points)
+
+    def test_five_points(self):
+        import numpy as np
+        import sympy
+
+        t_symb = sympy.Symbol('t')
+        num_points = 5
+        p4 = sympy.legendre(num_points - 1, t_symb)
+        p4_prime = p4.diff(t_symb)
+        inner_roots, inner_weights = self._call_func_under_test(num_points)
+        # Make sure the computed roots are actually roots.
+        self.assertTrue(np.allclose(
+            [float(p4_prime.subs({t_symb: root}))
+             for root in inner_roots], 0))
+
+        symbolic_roots = sorted(sympy.roots(p4_prime, multiple=True))
+        base_weight = sympy.Rational(2, num_points * (num_points - 1))
+        sym_weights = [base_weight / p4.subs({t_symb: sym_root})**2
+                       for sym_root in symbolic_roots]
+        self.assertTrue(np.all(inner_weights == sym_weights))
+
+    def test_symmetry(self):
+        import numpy as np
+
+        inner_roots, inner_weights = self._call_func_under_test(15)
+        self.assertTrue(np.all(inner_roots == -inner_roots[::-1]))
+        self.assertTrue(np.all(inner_weights == inner_weights[::-1]))
+
+    @staticmethod
+    def _accuracy_helper(degree, all_roots, all_weights):
+        import numpy as np
+        from numpy.polynomial import polynomial
+
+        if degree % 2 == 0:
+            expected_value = 2.0 / (degree + 1)
+        else:
+            # Odd-function integrate to 0.
+            expected_value = 0.0
+        curr_poly = [0.0] * degree + [1.0]
+        poly_vals = polynomial.polyval(all_roots, curr_poly)
+        quadrature_val = np.dot(poly_vals, all_weights)
+        return expected_value, quadrature_val
+
+    def test_accuracy(self):
+        import numpy as np
+        import six
+
+        num_points = 4
+        inner_roots, inner_weights = self._call_func_under_test(num_points)
+        all_roots = np.hstack([[-1], inner_roots, [1]])
+        base_weight = 2.0 / (num_points * (num_points - 1))
+        all_weights = np.hstack([[base_weight], inner_weights,
+                                 [base_weight]])
+        for degree in six.moves.xrange(2 * num_points - 2):
+            # Verify x^degree is exact.
+            expected_value, quadrature_val = self._accuracy_helper(
+                degree, all_roots, all_weights)
+            self.assertTrue(np.allclose(quadrature_val, expected_value))
+
+        # Verify that the next degree does not integrate exactly.
+        expected_value, quadrature_val = self._accuracy_helper(
+            2 * num_points - 2, all_roots, all_weights)
+        self.assertFalse(np.allclose(expected_value, quadrature_val))
+
+
 class Test_get_legendre_matrix(unittest.TestCase):
 
     @staticmethod
     def _call_func_under_test(points, max_degree=None):
         from assignment1.dg1 import get_legendre_matrix
         return get_legendre_matrix(points, max_degree=max_degree)
+
+    def test_degree0(self):
+        import numpy as np
+
+        with self.assertRaises(IndexError):
+            self._call_func_under_test(np.array([1]))
+        with self.assertRaises(IndexError):
+            self._call_func_under_test(np.array([1, 2]), max_degree=0)
 
     def test_evenly_spaced(self):
         import numpy as np
@@ -239,11 +318,11 @@ class Test_get_legendre_matrix(unittest.TestCase):
         x_vals = np.arange(p_order + 1, dtype=np.float64) / p_order
         leg_mat = self._call_func_under_test(x_vals)
         kappa2 = np.linalg.cond(leg_mat, p=2)
-        # This gives the exponent of kapp2.
-        return int(np.round(52 + np.log2(np.spacing(kappa2))))
+        # This gives the exponent of kappa2.
+        base_exponent = np.log2(np.spacing(1.0))
+        return int(np.round(np.log2(np.spacing(kappa2)) - base_exponent))
 
-    def test_evenly_spaced_condition_num(self):
-        # Demonstrate ill-conditioning
+    def test_evenly_spaced_ill_conditioning(self):
         import six
 
         # 2^exponent <= kappa2 < 2^(exponent + 1)
@@ -257,10 +336,120 @@ class Test_get_legendre_matrix(unittest.TestCase):
             7: 17,
             8: 20,
             9: 23,
+            10: 26,
+            11: 29,
+            12: 32,
+            13: 35,
+            14: 38,
+            15: 41,
         }
-        for i in six.moves.xrange(1, 9 + 1):
+        for i in six.moves.xrange(1, 15 + 1):
             kappa_expon = self._evenly_spaced_condition_num_helper(i)
             self.assertEqual(kappa_expon, expected_exponents[i])
+
+    def _chebyshev_conditioning_helper(self, num_nodes):
+        import numpy as np
+
+        theta = np.pi * np.arange(2 * num_nodes - 1, 0, -2,
+                                  dtype=np.float64) / (2 * num_nodes)
+        x_vals = np.cos(theta)
+        leg_mat = self._call_func_under_test(x_vals)
+        kappa2 = np.linalg.cond(leg_mat, p=2)
+        # This gives the exponent of kappa2.
+        base_exponent = np.log2(np.spacing(1.0))
+        return int(np.round(np.log2(np.spacing(kappa2)) - base_exponent))
+
+    def test_chebyshev_conditioning(self):
+        # Demonstrate not so bad conditioning
+        import six
+
+        # 2^exponent <= kappa2 < 2^(exponent + 1)
+        expected_exponents = {
+            2: 0,
+            3: 1,
+            4: 1,
+            5: 1,
+            6: 1,
+            7: 1,
+            8: 2,
+            9: 2,
+            10: 2,
+            11: 2,
+            12: 2,
+            13: 2,
+            14: 2,
+            15: 2,
+        }
+        for num_nodes in six.moves.xrange(2, 15 + 1):
+            kappa_expon = self._chebyshev_conditioning_helper(num_nodes)
+            self.assertEqual(kappa_expon, expected_exponents[num_nodes])
+
+    def _gauss_lobatto_conditioning_helper(self, num_nodes,
+                                           zero_centered=False):
+        import numpy as np
+        from assignment1.dg1 import gauss_lobatto_info
+
+        inner_nodes, _ = gauss_lobatto_info(num_nodes)
+        if zero_centered:
+            x_vals = np.hstack([[-1], inner_nodes, [1]])
+        else:
+            # Translate [-1, 1] --> [0, 2] --> [0, 1]
+            x_vals = np.hstack([[0], 0.5 * (1 + inner_nodes), [1]])
+        leg_mat = self._call_func_under_test(x_vals)
+        kappa2 = np.linalg.cond(leg_mat, p=2)
+        # This gives the exponent of kappa2.
+        base_exponent = np.log2(np.spacing(1.0))
+        return int(np.round(np.log2(np.spacing(kappa2)) - base_exponent))
+
+    def test_gauss_lobatto_conditioning_unit_interval(self):
+        import six
+
+        # 2^exponent <= kappa2 < 2^(exponent + 1)
+        expected_exponents = {
+            2: 1,
+            3: 3,
+            4: 6,
+            5: 8,
+            6: 11,
+            7: 13,
+            8: 16,
+            9: 18,
+            10: 21,
+            11: 23,
+            12: 26,
+            13: 28,
+            14: 31,
+            15: 33,
+        }
+        for num_nodes in six.moves.xrange(2, 15 + 1):
+            kappa_expon = self._gauss_lobatto_conditioning_helper(
+                num_nodes, zero_centered=False)
+            self.assertEqual(kappa_expon, expected_exponents[num_nodes])
+
+    def test_gauss_lobatto_conditioning_zero_centered(self):
+        import six
+
+        # 2^exponent <= kappa2 < 2^(exponent + 1)
+        expected_exponents = {
+            2: 0,
+            3: 0,
+            4: 1,
+            5: 1,
+            6: 1,
+            7: 2,
+            8: 2,
+            9: 2,
+            10: 2,
+            11: 2,
+            12: 2,
+            13: 2,
+            14: 2,
+            15: 2,
+        }
+        for num_nodes in six.moves.xrange(2, 15 + 1):
+            kappa_expon = self._gauss_lobatto_conditioning_helper(
+                num_nodes, zero_centered=True)
+            self.assertEqual(kappa_expon, expected_exponents[num_nodes])
 
 
 class Test_find_matrices(unittest.TestCase):
