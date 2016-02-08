@@ -315,7 +315,7 @@ class Test_get_legendre_matrix(unittest.TestCase):
     def _evenly_spaced_condition_num_helper(self, p_order):
         import numpy as np
 
-        x_vals = np.arange(p_order + 1, dtype=np.float64) / p_order
+        x_vals = np.linspace(-1, 1, p_order + 1)
         leg_mat = self._call_func_under_test(x_vals)
         kappa2 = np.linalg.cond(leg_mat, p=2)
         # This gives the exponent of kappa2.
@@ -326,26 +326,26 @@ class Test_get_legendre_matrix(unittest.TestCase):
         import six
 
         # 2^exponent <= kappa2 < 2^(exponent + 1)
-        expected_exponents = {
-            1: 1,
-            2: 3,
-            3: 6,
-            4: 9,
-            5: 11,
-            6: 14,
-            7: 17,
-            8: 20,
-            9: 23,
-            10: 26,
-            11: 29,
-            12: 32,
-            13: 35,
-            14: 38,
-            15: 41,
-        }
-        for i in six.moves.xrange(1, 15 + 1):
-            kappa_expon = self._evenly_spaced_condition_num_helper(i)
-            self.assertEqual(kappa_expon, expected_exponents[i])
+        kappa_exponents = {
+            p_order: self._evenly_spaced_condition_num_helper(p_order)
+            for p_order in six.moves.xrange(1, 15 + 1)}
+        self.assertEqual(kappa_exponents, {
+            1: 0,
+            2: 0,
+            3: 1,
+            4: 2,
+            5: 2,
+            6: 2,
+            7: 3,
+            8: 4,
+            9: 4,
+            10: 5,
+            11: 6,
+            12: 6,
+            13: 7,
+            14: 8,
+            15: 9,
+        })
 
     def _chebyshev_conditioning_helper(self, num_nodes):
         import numpy as np
@@ -364,7 +364,10 @@ class Test_get_legendre_matrix(unittest.TestCase):
         import six
 
         # 2^exponent <= kappa2 < 2^(exponent + 1)
-        expected_exponents = {
+        kappa_exponents = {
+            num_nodes: self._chebyshev_conditioning_helper(num_nodes)
+            for num_nodes in six.moves.xrange(2, 15 + 1)}
+        self.assertEqual(kappa_exponents, {
             2: 0,
             3: 1,
             4: 1,
@@ -379,10 +382,7 @@ class Test_get_legendre_matrix(unittest.TestCase):
             13: 2,
             14: 2,
             15: 2,
-        }
-        for num_nodes in six.moves.xrange(2, 15 + 1):
-            kappa_expon = self._chebyshev_conditioning_helper(num_nodes)
-            self.assertEqual(kappa_expon, expected_exponents[num_nodes])
+        })
 
     def _gauss_lobatto_conditioning_helper(self, num_nodes,
                                            zero_centered=False):
@@ -401,11 +401,15 @@ class Test_get_legendre_matrix(unittest.TestCase):
         base_exponent = np.log2(np.spacing(1.0))
         return int(np.round(np.log2(np.spacing(kappa2)) - base_exponent))
 
-    def test_gauss_lobatto_conditioning_unit_interval(self):
+    def test_gauss_lobatto_conditioning_wrong_interval(self):
         import six
 
         # 2^exponent <= kappa2 < 2^(exponent + 1)
-        expected_exponents = {
+        kappa_exponents = {
+            num_nodes: self._gauss_lobatto_conditioning_helper(
+                num_nodes, zero_centered=False)
+            for num_nodes in six.moves.xrange(2, 15 + 1)}
+        self.assertEqual(kappa_exponents, {
             2: 1,
             3: 3,
             4: 6,
@@ -420,17 +424,17 @@ class Test_get_legendre_matrix(unittest.TestCase):
             13: 28,
             14: 31,
             15: 33,
-        }
-        for num_nodes in six.moves.xrange(2, 15 + 1):
-            kappa_expon = self._gauss_lobatto_conditioning_helper(
-                num_nodes, zero_centered=False)
-            self.assertEqual(kappa_expon, expected_exponents[num_nodes])
+        })
 
-    def test_gauss_lobatto_conditioning_zero_centered(self):
+    def test_gauss_lobatto_conditioning_same_interval(self):
         import six
 
         # 2^exponent <= kappa2 < 2^(exponent + 1)
-        expected_exponents = {
+        kappa_exponents = {
+            num_nodes: self._gauss_lobatto_conditioning_helper(
+                num_nodes, zero_centered=True)
+            for num_nodes in six.moves.xrange(2, 15 + 1)}
+        self.assertEqual(kappa_exponents, {
             2: 0,
             3: 0,
             4: 1,
@@ -445,11 +449,27 @@ class Test_get_legendre_matrix(unittest.TestCase):
             13: 2,
             14: 2,
             15: 2,
-        }
-        for num_nodes in six.moves.xrange(2, 15 + 1):
-            kappa_expon = self._gauss_lobatto_conditioning_helper(
-                num_nodes, zero_centered=True)
-            self.assertEqual(kappa_expon, expected_exponents[num_nodes])
+        })
+
+
+class Test__find_matrices_helper(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(vals1, vals2):
+        from assignment1.dg1 import _find_matrices_helper
+        return _find_matrices_helper(vals1, vals2)
+
+    def test_it(self):
+        import sympy
+
+        # NOTE: Could also use sympy.Matrix([sympy.symbols('u:4')]).
+        #       but will refer to the variables.
+        u0, u1, u2, u3 = sympy.symbols('u0, u1, u2, u3')
+        v0, v1, v2, v3 = sympy.symbols('v0, v1, v2, v3')
+        u = sympy.Matrix([[u0, u1, u2, u3]])
+        v = sympy.Matrix([[v0, v1, v2, v3]])
+        result = self._call_func_under_test(u, v)
+        self.assertEqual(result, u0 * (v1 + v3) + u1 * v2 + u2 * v3)
 
 
 class Test_find_matrices(unittest.TestCase):
@@ -468,7 +488,11 @@ class Test_find_matrices(unittest.TestCase):
          expected_stiffness_mat) = mass_and_stiffness_matrices_p1()
         self.assertTrue(isinstance(mass_mat, np.ndarray))
         self.assertTrue(isinstance(stiffness_mat, np.ndarray))
-        self.assertTrue(np.allclose(mass_mat, expected_mass_mat))
+        # We are solving on [0, 1] but ``find_matrices`` is
+        # on [-1, 1], and the mass matrix is translation invariant
+        # but scales with interval length.
+        self.assertTrue(np.allclose(0.5 * mass_mat, expected_mass_mat))
+        # The stiffness matrix is scale and translation invariant.
         self.assertTrue(np.allclose(stiffness_mat, expected_stiffness_mat))
 
     def test_p2(self):
@@ -480,7 +504,11 @@ class Test_find_matrices(unittest.TestCase):
          expected_stiffness_mat) = mass_and_stiffness_matrices_p2()
         self.assertTrue(isinstance(mass_mat, np.ndarray))
         self.assertTrue(isinstance(stiffness_mat, np.ndarray))
-        self.assertTrue(np.allclose(mass_mat, expected_mass_mat))
+        # We are solving on [0, 1] but ``find_matrices`` is
+        # on [-1, 1], and the mass matrix is translation invariant
+        # but scales with interval length.
+        self.assertTrue(np.allclose(0.5 * mass_mat, expected_mass_mat))
+        # The stiffness matrix is scale and translation invariant.
         self.assertTrue(np.allclose(stiffness_mat, expected_stiffness_mat))
 
 
@@ -866,20 +894,22 @@ class TestDG1Solver(unittest.TestCase):
         # Set-up mocks.
         get_nodes.return_value = nodes = object()
         init_data.return_value = object()
-        mock_mass_base = mock.MagicMock()
+        mock_mass1 = mock.MagicMock()
         mock_stiffness = object()
-        find_mats.return_value = mock_mass_base, mock_stiffness
-        mock_mass_base.__rmul__.return_value = mock_mass = object()
+        find_mats.return_value = mock_mass1, mock_stiffness
+        mock_mass1.__rmul__.return_value = mock_mass2 = mock.MagicMock()
+        mock_mass2.__rmul__.return_value = mock_mass3 = object()
         # Construct the object.
         p_order = 10
         self._constructor_helper(p_order, nodes, init_data.return_value,
-                                 mock_mass, mock_stiffness)
+                                 mock_mass3, mock_stiffness)
         # Verify mocks were called.
         get_nodes.assert_called_once_with(self.num_intervals, p_order,
                                           step_size=self.step_size)
         init_data.assert_called_once_with(nodes)
         find_mats.assert_called_once_with(p_order)
-        mock_mass_base.__rmul__.assert_called_once_with(self.step_size)
+        mock_mass1.__rmul__.assert_called_once_with(0.5)
+        mock_mass2.__rmul__.assert_called_once_with(self.step_size)
 
     def test_constructor_no_mocks(self):
         import numpy as np

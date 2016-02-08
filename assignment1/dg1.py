@@ -241,8 +241,8 @@ def gauss_lobatto_info(num_points):
 
        w_j = \\frac{2}{n(n - 1) \\left[P_{n - 1}\\left(x_j\\right)\\right]^2}
 
-    This is in contrast to the points used in Gaussian quadrature, which
-    use the weights
+    This is in contrast to the scheme used in Gaussian quadrature, which
+    use roots of :math:`P_n(x)` as nodes and use the weights
 
     .. math::
 
@@ -315,15 +315,41 @@ def get_legendre_matrix(points, max_degree=None):
     return result
 
 
+def _find_matrices_helper(vals1, vals2):
+    """Helper for :func:`find_matrices`.
+
+    Computes a shoelace-like product of two vectors :math:`u, v`
+    via
+
+    .. math::
+
+        u_0 (v_1 + v_3 + \\cdots) + u_1 (v_2 + v_4 + \\cdots) +
+            u_{p - 1} v_p
+
+    :type vals1: :class:`numpy.ndarray`.
+    :param vals1: The vector :math`u`.
+
+    :type vals2: :class:`numpy.ndarray`.
+    :param vals2: The vector :math`v`.
+
+    :rtype: float
+    :returns: The shoelace-like product of the vectors.
+    """
+    result = 0
+    for i, val in enumerate(vals1):
+        result += val * np.sum(vals2[i + 1::2])
+    return result
+
+
 def find_matrices(p_order):
     """Find mass and stiffness matrices.
 
-    We do this on the reference interval :math:`\\left[0, 1\\right]`
+    We do this on the reference interval :math:`\\left[-1, 1\\right]`
     with the evenly spaced points
 
     .. math::
 
-       x_0 = 0, x_1 = 1/p, \\ldots, x_p = 1
+       x_0 = -1, x_1 = -(p - 2)/p, \\ldots, x_p = 1
 
     and compute the polynomials :math:`\\varphi_j(x)` such that
     :math:`\\varphi_j\\left(x_i\\right) = \\delta_{ij}`. We do this by
@@ -331,7 +357,7 @@ def find_matrices(p_order):
 
     .. math::
 
-       \\varphi_j(x) = \\sum_n c_n^{(j)} L_n(x)
+       \\varphi_j(x) = \\sum_{n = 0}^p c_n^{(j)} L_n(x)
 
     where :math:`L_n(x)` is the Legendre polynomial of degree :math:`n`.
     With this representation, we need to solve
@@ -344,7 +370,7 @@ def find_matrices(p_order):
          \\vdots  & \\vdots  & \\ddots & \\vdots  \\\\
          L_0(x_p) & L_1(x_p) & \\cdots & L_p(x_p)
        \\end{array}\\right]
-       \\left[ \\begin{array}{c}
+       \\left[ \\begin{array}{c c c c}
          c_0^{(0)} & c_0^{(1)} & \\cdots & c_0^{(p)} \\\\
          c_1^{(0)} & c_1^{(1)} & \\cdots & c_1^{(p)} \\\\
            \\vdots &   \\vdots & \\ddots & \\vdots   \\\\
@@ -356,19 +382,58 @@ def find_matrices(p_order):
 
     .. math::
 
-        M_{ij} = \\int_0^1 \\varphi_i(x) \\varphi_j(x) \\, dx
+        M_{ij} = \\int_{-1}^1 \\varphi_i(x) \\varphi_j(x) \\, dx
 
     and the stiffness matrix
 
     .. math::
 
-        K_{ij} = \\int_0^1 \\varphi_i'(x) \\varphi_j(x) \\, dx
+        K_{ij} = \\int_{-1}^1 \\varphi_i'(x) \\varphi_j(x) \\, dx
 
-    This method uses Gaussian quadrature to evaluate the integrals.
+    Utilizing the fact that
+
+    .. math::
+
+        \\left\\langle L_n, L_m \\right\\rangle =
+            \\int_{-1}^1 L_n(x) L_m(x) \\, dx =
+            \\frac{2}{2n + 1} \\delta_{nm}
+
+    we can compute
+
+    .. math::
+
+        M_{ij} = \\left\\langle \\varphi_i, \\varphi_j \\right\\rangle =
+            \\sum_{n, m} \\left\\langle c_n^{(i)} L_n,
+                c_m^{(j)} L_m \\right\\rangle =
+            \\sum_{n = 0}^p \\frac{2}{2n + 1} c_n^{(i)} c_n^{(j)}.
+
+    Similarly
+
+    .. math::
+
+        \\left\\langle L_n'(x), L_m(x) \\right\\rangle =
+          \\begin{cases}
+            2 & \\text{ if } n > m \\text{ and }
+                n - m \\equiv 1 \\bmod{2} \\\\
+            0 & \\text{ otherwise}.
+          \\end{cases}
+
+    gives
+
+    .. math::
+
+        K_{ij} = \\left\\langle \\varphi_i', \\varphi_j \\right\\rangle =
+          \\sum_{n, m} \\left\\langle c_n^{(i)} L_n',
+              c_m^{(j)} L_m \\right\\rangle =
+          2 \\left(c_0^{(j)} \\left(c_1^{(i)} + c_3^{(i)} + \\cdots\\right)
+                 + c_1^{(j)} \\left(c_2^{(i)} + c_4^{(i)} + \\cdots\\right)
+                 + \\cdots
+                 + c_{p - 1}^{(j)} c_p^{(i)}\\right)
+
+    (For more general integrals, one might use Gaussian quadrature.
     The largest degree integrand :math:`\\varphi_i \\varphi_j` has
-    degree :math:`2 p` so we use :math:`n = p + 1` points (accurate
-    up to degree :math:`2(p + 1) - 1 = 2p + 1`) to ensure
-    that the quadrature is exact.
+    degree :math:`2 p` so this would require :math:`n = p + 1` points
+    to be exact up to degree :math:`2(p + 1) - 1 = 2p + 1`.)
 
     :type p_order: int
     :param p_order: The degree of precision for the method.
@@ -377,33 +442,20 @@ def find_matrices(p_order):
     :returns: Pair of mass and stiffness matrices, square
               :class:`numpy.ndarray` of dimension ``p_order + 1``.
     """
-    num_leg = p_order + 1
-    leg_pts, leg_weights = legendre.leggauss(num_leg)
-    # Shift points and weights from [-1, 1] to [0, 1]
-    leg_pts += 1
-    leg_pts *= 0.5
-    leg_weights *= 0.5
-
-    # Now create the Vandermonde matrix and invert.
-    x_vals = np.arange(p_order + 1, dtype=np.float64) / p_order
+    # Find the coefficients of the L_n(x) for each basis function.
+    x_vals = np.linspace(-1, 1, p_order + 1)
     coeff_mat = np.linalg.inv(get_legendre_matrix(x_vals))
 
-    # Evaluate the PHI_i at the Legendre points.
-    phi_vals = legendre.legval(leg_pts, coeff_mat)
-    # The rows correspond to the polynomials while the
-    # columns correspond to the values in ``leg_pts``.
-
     # Populate the mass and stiffness matrices.
+    legendre_norms = 2.0 / np.arange(1, 2 * p_order + 2, 2)
     mass_mat = np.zeros((p_order + 1, p_order + 1))
     stiffness_mat = np.zeros((p_order + 1, p_order + 1))
     for i in six.moves.xrange(p_order + 1):
-        phi_i = phi_vals[i, :]
-        phi_i_prime = legendre.legval(
-            leg_pts, legendre.legder(coeff_mat[:, i]))
+        mass_mat_base = legendre_norms * coeff_mat[:, i]
         for j in six.moves.xrange(i, p_order + 1):
-            phi_j = phi_vals[j, :]
-            mass_mat[i, j] = (phi_i * phi_j).dot(leg_weights)
-            stiffness_mat[i, j] = (phi_i_prime * phi_j).dot(leg_weights)
+            mass_mat[i, j] = np.sum(mass_mat_base * coeff_mat[:, j])
+            stiffness_mat[i, j] = 2.0 * _find_matrices_helper(
+                coeff_mat[:, j], coeff_mat[:, i])
             if j > i:
                 mass_mat[j, i] = mass_mat[i, j]
                 stiffness_mat[j, i] = -stiffness_mat[i, j]
@@ -754,6 +806,10 @@ class DG1Solver(object):
             mass_mat, stiffness_mat = mass_and_stiffness_matrices_p3()
         else:
             mass_mat, stiffness_mat = find_matrices(self.p_order)
+            # We are solving on [0, 1] but ``find_matrices`` is
+            # on [-1, 1], and the mass matrix is translation invariant
+            # but scales with interval length.
+            mass_mat = 0.5 * mass_mat
 
         return self.step_size * mass_mat, stiffness_mat
 
