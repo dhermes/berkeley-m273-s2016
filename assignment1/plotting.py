@@ -96,7 +96,7 @@ class PolynomialInterpolate(object):
         to be in the first column of the :math:`x`-values stored
         on the solver.
 
-        :type solver: :class:`DG1Solver`
+        :type solver: :class:`.dg1.DG1Solver`
         :param solver: A solver containing :math:`x`-values.
 
         :type num_points: int
@@ -157,7 +157,7 @@ def _plot_solution(color, num_cols, interp_func, solver, ax):
     :param interp_func: The polynomial interpolation object used to map
                         a solution onto a set of points.
 
-    :type solver: :class:`DG1Solver`
+    :type solver: :class:`.dg1.DG1Solver`
     :param solver: A solver containing a ``solution`` and ``node_points``.
 
     :type ax: :class:`matplotlib.artist.Artist`
@@ -217,7 +217,7 @@ class DG1Animate(object):
     a solution that remains in the same bounding box as :math:`u(x, 0)` (give
     or take some noise).
 
-    :type solver: :class:`DG1Solver`
+    :type solver: :class:`.dg1.DG1Solver`
     :param solver: The solver which computes and updates the solution.
 
     :type fig: :class:`matplotlib.figure.Figure`

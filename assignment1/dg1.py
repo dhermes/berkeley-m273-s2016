@@ -121,6 +121,8 @@ def find_matrices_symbolic(p_order):
 def mass_and_stiffness_matrices_p1():
     """Get mass and stiffness matrices for :math:`p = 1`.
 
+    These are for the interval :math:`\\left[0, 1\\right]`.
+
     .. math::
 
        M = \\frac{1}{6} \\left[ \\begin{array}{c c}
@@ -151,6 +153,8 @@ def mass_and_stiffness_matrices_p1():
 
 def mass_and_stiffness_matrices_p2():
     """Get mass and stiffness matrices for :math:`p = 2`.
+
+    These are for the interval :math:`\\left[0, 1\\right]`.
 
     .. math::
 
@@ -186,6 +190,8 @@ def mass_and_stiffness_matrices_p2():
 
 def mass_and_stiffness_matrices_p3():
     """Get mass and stiffness matrices for :math:`p = 3`.
+
+    These are for the interval :math:`\\left[0, 1\\right]`.
 
     .. math::
 
@@ -419,13 +425,17 @@ def find_matrices(p_order):
 
     .. math::
 
-        K_{ij} = \\left\\langle \\varphi_i', \\varphi_j \\right\\rangle =
-          \\sum_{n, m} \\left\\langle c_n^{(i)} L_n',
-              c_m^{(j)} L_m \\right\\rangle =
-          2 \\left(c_0^{(j)} \\left(c_1^{(i)} + c_3^{(i)} + \\cdots\\right)
-                 + c_1^{(j)} \\left(c_2^{(i)} + c_4^{(i)} + \\cdots\\right)
-                 + \\cdots
-                 + c_{p - 1}^{(j)} c_p^{(i)}\\right)
+        \\begin{align*}
+        K_{ij} &= \\left\\langle \\varphi_i', \\varphi_j \\right\\rangle
+                = \\sum_{n, m} \\left\\langle c_n^{(i)} L_n',
+                      c_m^{(j)} L_m \\right\\rangle \\\\
+               &= 2 \\left(c_0^{(j)} \\left(c_1^{(i)} + c_3^{(i)} +
+                      \\cdots\\right)
+                         + c_1^{(j)} \\left(c_2^{(i)} + c_4^{(i)} +
+                      \\cdots\\right)
+                         + \\cdots
+                         + c_{p - 1}^{(j)} c_p^{(i)}\\right) \\\\
+        \\end{align*}
 
     (For more general integrals, one might use Gaussian quadrature.
     The largest degree integrand :math:`\\varphi_i \\varphi_j` has
@@ -615,7 +625,7 @@ class DG1Solver(object):
 
     :type total_time: float
     :param total_time: The amount of time to run the solver for (starts at
-                       :math:`t = 0`.
+                       :math:`t = 0`).
 
     :type dt: float
     :param dt: The timestep to use in the solver.
