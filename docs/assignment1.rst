@@ -7,6 +7,8 @@ Submodules
 .. toctree::
 
    assignment1.dg1
+   assignment1.plotting
+   assignment1.test_plotting
 
 Module contents
 ---------------
