@@ -228,7 +228,8 @@ class Test_gauss_lobatto_points(unittest.TestCase):
         quadrature_val = np.dot(poly_vals, all_weights)
         return expected_value, quadrature_val
 
-    def _get_weights(self, num_points, inner_nodes):
+    @staticmethod
+    def _get_weights(num_points, inner_nodes):
         from numpy.polynomial import legendre
 
         base_weight = 2.0 / (num_points * (num_points - 1))
