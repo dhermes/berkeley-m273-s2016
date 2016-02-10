@@ -186,12 +186,12 @@ class Test_mass_and_stiffness_matrices_p3(unittest.TestCase):
         self.assertTrue(np.all(stiffness_mat1 == stiffness_mat2))
 
 
-class Test_gauss_lobatto_info(unittest.TestCase):
+class Test_gauss_lobatto_points(unittest.TestCase):
 
     @staticmethod
     def _call_func_under_test(num_points):
-        from assignment1.dg1 import gauss_lobatto_info
-        return gauss_lobatto_info(num_points)
+        from assignment1.dg1 import gauss_lobatto_points
+        return gauss_lobatto_points(num_points)
 
     def test_five_points(self):
         import numpy as np
@@ -201,27 +201,20 @@ class Test_gauss_lobatto_info(unittest.TestCase):
         num_points = 5
         p4 = sympy.legendre(num_points - 1, t_symb)
         p4_prime = p4.diff(t_symb)
-        inner_roots, inner_weights = self._call_func_under_test(num_points)
+        inner_nodes = self._call_func_under_test(num_points)
         # Make sure the computed roots are actually roots.
         self.assertTrue(np.allclose(
             [float(p4_prime.subs({t_symb: root}))
-             for root in inner_roots], 0))
-
-        symbolic_roots = sorted(sympy.roots(p4_prime, multiple=True))
-        base_weight = sympy.Rational(2, num_points * (num_points - 1))
-        sym_weights = [base_weight / p4.subs({t_symb: sym_root})**2
-                       for sym_root in symbolic_roots]
-        self.assertTrue(np.all(inner_weights == sym_weights))
+             for root in inner_nodes], 0))
 
     def test_symmetry(self):
         import numpy as np
 
-        inner_roots, inner_weights = self._call_func_under_test(15)
-        self.assertTrue(np.all(inner_roots == -inner_roots[::-1]))
-        self.assertTrue(np.all(inner_weights == inner_weights[::-1]))
+        inner_nodes = self._call_func_under_test(15)
+        self.assertTrue(np.all(inner_nodes == -inner_nodes[::-1]))
 
     @staticmethod
-    def _accuracy_helper(degree, all_roots, all_weights):
+    def _accuracy_helper(degree, all_nodes, all_weights):
         import numpy as np
         from numpy.polynomial import polynomial
 
@@ -231,29 +224,38 @@ class Test_gauss_lobatto_info(unittest.TestCase):
             # Odd-function integrate to 0.
             expected_value = 0.0
         curr_poly = [0.0] * degree + [1.0]
-        poly_vals = polynomial.polyval(all_roots, curr_poly)
+        poly_vals = polynomial.polyval(all_nodes, curr_poly)
         quadrature_val = np.dot(poly_vals, all_weights)
         return expected_value, quadrature_val
+
+    def _get_weights(self, num_points, inner_nodes):
+        from numpy.polynomial import legendre
+
+        base_weight = 2.0 / (num_points * (num_points - 1))
+        p_n_minus1 = [0] * (num_points - 1) + [1]
+        p_n_minus1_at_nodes = legendre.legval(inner_nodes, p_n_minus1)
+        return base_weight / p_n_minus1_at_nodes**2
 
     def test_accuracy(self):
         import numpy as np
         import six
 
         num_points = 4
-        inner_roots, inner_weights = self._call_func_under_test(num_points)
-        all_roots = np.hstack([[-1], inner_roots, [1]])
+        inner_nodes = self._call_func_under_test(num_points)
+        inner_weights = self._get_weights(num_points, inner_nodes)
+        all_nodes = np.hstack([[-1], inner_nodes, [1]])
         base_weight = 2.0 / (num_points * (num_points - 1))
         all_weights = np.hstack([[base_weight], inner_weights,
                                  [base_weight]])
         for degree in six.moves.xrange(2 * num_points - 2):
             # Verify x^degree is exact.
             expected_value, quadrature_val = self._accuracy_helper(
-                degree, all_roots, all_weights)
+                degree, all_nodes, all_weights)
             self.assertTrue(np.allclose(quadrature_val, expected_value))
 
         # Verify that the next degree does not integrate exactly.
         expected_value, quadrature_val = self._accuracy_helper(
-            2 * num_points - 2, all_roots, all_weights)
+            2 * num_points - 2, all_nodes, all_weights)
         self.assertFalse(np.allclose(expected_value, quadrature_val))
 
 
@@ -387,9 +389,9 @@ class Test_get_legendre_matrix(unittest.TestCase):
     def _gauss_lobatto_conditioning_helper(self, num_nodes,
                                            zero_centered=False):
         import numpy as np
-        from assignment1.dg1 import gauss_lobatto_info
+        from assignment1.dg1 import gauss_lobatto_points
 
-        inner_nodes, _ = gauss_lobatto_info(num_nodes)
+        inner_nodes = gauss_lobatto_points(num_nodes)
         if zero_centered:
             x_vals = np.hstack([[-1], inner_nodes, [1]])
         else:
