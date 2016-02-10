@@ -819,6 +819,17 @@ class TestDG1Solver(unittest.TestCase):
         rk_method.assert_called_once_with(solver.ode_func,
                                           orig_soln, solver.dt)
 
+    def _get_error(self, num_intervals, p_order, T, dt):
+        import numpy as np
+
+        solver = self._make_one(num_intervals, p_order, T, dt)
+        # Save initial solution for later comparison (though a copy is
+        # not strictly needed).
+        init_soln = solver.solution.copy()
+        while solver.current_step != solver.num_steps:
+            solver.update()
+        return np.linalg.norm(init_soln - solver.solution, ord='fro')
+
     def _convergence_helper(self, p_order, drop_off=0.0):
         import numpy as np
         import six
@@ -837,13 +848,7 @@ class TestDG1Solver(unittest.TestCase):
         h_vals = []
         errors = []
         for _ in six.moves.xrange(5):
-            solver = self._make_one(num_intervals, p_order, T, dt)
-            # Save initial solution for later comparison (though a copy is
-            # not strictly needed).
-            init_soln = solver.solution.copy()
-            while solver.current_step != solver.num_steps:
-                solver.update()
-            err_frob = np.linalg.norm(init_soln - solver.solution, ord='fro')
+            err_frob = self._get_error(num_intervals, p_order, T, dt)
             errors.append(err_frob)
             h_vals.append(dx)
             # Update the values used. Preserve the CFL condition by
