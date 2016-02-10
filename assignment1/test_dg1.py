@@ -818,3 +818,42 @@ class TestDG1Solver(unittest.TestCase):
         # Verify mock.
         rk_method.assert_called_once_with(solver.ode_func,
                                           orig_soln, solver.dt)
+
+    def _convergence_helper(self, p_order):
+        import numpy as np
+        import six
+
+        num_intervals = 4
+        dx = 1.0 / num_intervals
+        T = 1.0
+        dt = T / 32.0  # 32 steps to start.
+        h_vals = []
+        errors = []
+        for _ in six.moves.xrange(5):
+            solver = self._make_one(num_intervals, p_order, T, dt)
+            # Save initial solution for later comparison (though a copy is
+            # not strictly needed).
+            init_soln = solver.solution.copy()
+            while solver.current_step != solver.num_steps:
+                solver.update()
+            err_frob = np.linalg.norm(init_soln - solver.solution, ord='fro')
+            errors.append(err_frob)
+            h_vals.append(dx)
+            # Update the values used.
+            # CFL condition: CONSTANT == dt / dx == dt * num_intervals
+            num_intervals *= 2
+            dx *= 0.5
+            dt *= 0.5
+
+        conv_rate, _ = np.polyfit(np.log2(h_vals), np.log2(errors), deg=1)
+        self.assertTrue(conv_rate >= p_order)
+        self.assertTrue(conv_rate < p_order + 1)
+
+    def test_linear_convergence(self):
+        self._convergence_helper(1)
+
+    def test_quadratic_convergence(self):
+        self._convergence_helper(2)
+
+    def test_cubic_convergence(self):
+        self._convergence_helper(3)
