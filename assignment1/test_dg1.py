@@ -819,14 +819,21 @@ class TestDG1Solver(unittest.TestCase):
         rk_method.assert_called_once_with(solver.ode_func,
                                           orig_soln, solver.dt)
 
-    def _convergence_helper(self, p_order):
+    def _convergence_helper(self, p_order, drop_off=0.0):
         import numpy as np
         import six
 
-        num_intervals = 4
-        dx = 1.0 / num_intervals
         T = 1.0
-        dt = T / 32.0  # 32 steps to start.
+        num_intervals = 4
+        if p_order < 4:
+            # NOTE: dt / dx == 1 / 8
+            #  <==> num_steps == 8 num_intervals
+            dt = T / (8.0 * num_intervals)
+        else:
+            # NOTE: dt / dx == 1 / 16
+            #  <==> num_steps == 16 num_intervals
+            dt = T / (16.0 * num_intervals)
+        dx = 1.0 / num_intervals
         h_vals = []
         errors = []
         for _ in six.moves.xrange(5):
@@ -839,15 +846,15 @@ class TestDG1Solver(unittest.TestCase):
             err_frob = np.linalg.norm(init_soln - solver.solution, ord='fro')
             errors.append(err_frob)
             h_vals.append(dx)
-            # Update the values used.
-            # CFL condition: CONSTANT == dt / dx == dt * num_intervals
+            # Update the values used. Preserve the CFL condition by
+            # leaving dt / dx CONSTANT.
             num_intervals *= 2
             dx *= 0.5
             dt *= 0.5
 
         conv_rate, _ = np.polyfit(np.log2(h_vals), np.log2(errors), deg=1)
-        self.assertTrue(conv_rate >= p_order)
-        self.assertTrue(conv_rate < p_order + 1)
+        self.assertTrue(conv_rate >= p_order - drop_off)
+        self.assertTrue(conv_rate < p_order + 1 - drop_off)
 
     def test_linear_convergence(self):
         self._convergence_helper(1)
@@ -857,3 +864,9 @@ class TestDG1Solver(unittest.TestCase):
 
     def test_cubic_convergence(self):
         self._convergence_helper(3)
+
+    def test_quartic_convergence(self):
+        self._convergence_helper(4)
+
+    def test_quintic_convergence(self):
+        self._convergence_helper(5, drop_off=0.5)
