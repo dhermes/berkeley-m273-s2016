@@ -1,4 +1,4 @@
-"""Custom script to run pep8 on the codebase.
+r"""Custom script to run pep8 on the codebase.
 
 This runs pep8 as a script via subprocess but only runs it on the
 .py files that are checked in to the repository.

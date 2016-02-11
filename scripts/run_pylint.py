@@ -1,4 +1,4 @@
-"""Custom script to run PyLint on the codebase.
+r"""Custom script to run PyLint on the codebase.
 
 This runs pylint as a script via subprocess in two different
 subprocesses. The first lints the production/library code
@@ -52,7 +52,7 @@ TEST_RC_REPLACEMENTS = {
 
 
 def read_config(filename):
-    """Reads pylintrc config onto native ConfigParser object."""
+    """Read pylintrc config onto native ConfigParser object."""
     config = ConfigParser.ConfigParser()
     with open(filename, 'r') as file_obj:
         config.readfp(file_obj)
@@ -61,7 +61,7 @@ def read_config(filename):
 
 def make_test_rc(base_rc_filename, additions_dict,
                  replacements_dict, target_filename):
-    """Combines a base rc and test additions into single file."""
+    """Combine a base rc and test additions into single file."""
     main_cfg = read_config(base_rc_filename)
 
     # Create fresh config for test, which must extend production.
@@ -98,7 +98,7 @@ def make_test_rc(base_rc_filename, additions_dict,
 
 
 def valid_filename(filename):
-    """Checks if a file is a Python file and is not ignored."""
+    """Check if a file is a Python file and is not ignored."""
     for directory in IGNORED_DIRECTORIES:
         if filename.startswith(directory):
             return False
@@ -107,7 +107,7 @@ def valid_filename(filename):
 
 
 def is_production_filename(filename):
-    """Checks if the file contains production code.
+    """Check if the file contains production code.
 
     :rtype: bool
     :returns: Boolean indicating production status.
@@ -116,7 +116,7 @@ def is_production_filename(filename):
 
 
 def get_files_for_linting(allow_limited=True):
-    """Gets a list of files in the repository.
+    """Get a list of files in the repository.
 
     By default, returns all files via ``git ls-files``. However, in some cases
     uses a specific commit or branch (a so-called diff base) to compare
@@ -168,7 +168,7 @@ def get_files_for_linting(allow_limited=True):
 
 
 def get_python_files(all_files=None):
-    """Gets a list of all Python files in the repository that need linting.
+    """Get a list of all Python files in the repository that need linting.
 
     Relies on :func:`get_files_for_linting()` to determine which files should
     be considered.
@@ -202,7 +202,7 @@ def get_python_files(all_files=None):
 
 
 def lint_fileset(filenames, rcfile, description):
-    """Lints a group of files using a given rcfile."""
+    """Lint a group of files using a given rcfile."""
     # Only lint filenames that exist. For example, 'git diff --name-only'
     # could spit out deleted / renamed files. Another alternative could
     # be to use 'git diff --name-status' and filter out files with a

@@ -10,12 +10,12 @@ INTERVAL_POINTS = 10
 
 
 def make_lagrange_matrix(x_vals, all_x):
-    """Make matrix where :math:`M_{ij} = \\ell_j(x_i)`.
+    r"""Make matrix where :math:`M_{ij} = \ell_j(x_i)`.
 
     This matrix contains the Lagrange interpolating polynomials evaluated
     on the interval given by ``x_vals``. The :math:`x_i` (corresponding to
     rows in :math:`M`) are the ``num_points`` possible :math:`x`-values in
-    ``all_x`` and the :math:`\\ell_j` (corresponding to columns in
+    ``all_x`` and the :math:`\ell_j` (corresponding to columns in
     :math:`M`) are the Lagrange interpolating polynomials interpolated
     on the points in ``x_vals``.
 
@@ -24,7 +24,7 @@ def make_lagrange_matrix(x_vals, all_x):
                    Lagrange basis functions.
 
     :type all_x: :class:`numpy.ndarray`
-    :param all_x: 1D array of points to evaluate the :math:`\\ell_j(x)`` at.
+    :param all_x: 1D array of points to evaluate the :math:`\ell_j(x)`` at.
 
     :rtype: :class:`numpy.ndarray`
     :returns: The matrix :math:`M`.
@@ -51,7 +51,7 @@ def make_lagrange_matrix(x_vals, all_x):
 
 
 class PolynomialInterpolate(object):
-    """Polynomial interpolation from node points.
+    r"""Polynomial interpolation from node points.
 
     Assumes the first and last :math:`x`-value are the endpoints of
     the interval.
@@ -60,9 +60,9 @@ class PolynomialInterpolate(object):
 
     .. math::
 
-       p(x) = \\sum_{j} y_j \\ell_j(x)
+       p(x) = \sum_{j} y_j \ell_j(x)
 
-    and we can compute :math:`\\ell_j(x)` of our data without ever computing
+    and we can compute :math:`\ell_j(x)` of our data without ever computing
     the coefficients. We do this by computing all pairwise differences of
     our :math:`x`-values and the interpolating values. Then we take the
     products of these differences (leaving out one of the interpolating
@@ -111,16 +111,16 @@ class PolynomialInterpolate(object):
         return cls(x_vals, num_points=num_points)
 
     def interpolate(self, y_vals):
-        """Evaluate interpolated polynomial given :math:`y`-values.
+        r"""Evaluate interpolated polynomial given :math:`y`-values.
 
-        We've already pre-computed the values :math:`\\ell_j(x)` for
+        We've already pre-computed the values :math:`\ell_j(x)` for
         all the :math:`x`-values we use in our interval (``num_points`` in
         all, using the interpolating :math:`x`-values to compute the
-        :math:`\\ell_j(x)`). So we simply use them to compute
+        :math:`\ell_j(x)`). So we simply use them to compute
 
         .. math::
 
-           p(x) = \\sum_{j} y_j \\ell_j(x)
+           p(x) = \sum_{j} y_j \ell_j(x)
 
         using the :math:`y_j` from ``y_vals``.
 
@@ -286,7 +286,7 @@ class DG1Animate(object):
         return self.plot_lines
 
     def update_plot(self, frame_number):
-        """Updates the lines in the plot.
+        """Update the lines in the plot.
 
         First advances the solver and then uses the updated value
         to update the :class:`matplotlib.lines.Line2D` objects
