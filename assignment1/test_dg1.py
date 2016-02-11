@@ -501,9 +501,9 @@ class Test_get_evenly_spaced_points(unittest.TestCase):
 class Test_find_matrices(unittest.TestCase):
 
     @staticmethod
-    def _call_func_under_test(p_order):
+    def _call_func_under_test(p_order, points_on_ref_int=None):
         from assignment1.dg1 import find_matrices
-        return find_matrices(p_order)
+        return find_matrices(p_order, points_on_ref_int=points_on_ref_int)
 
     def test_p1(self):
         import numpy as np
@@ -520,6 +520,39 @@ class Test_find_matrices(unittest.TestCase):
         self.assertTrue(np.allclose(0.5 * mass_mat, expected_mass_mat))
         # The stiffness matrix is scale and translation invariant.
         self.assertTrue(np.allclose(stiffness_mat, expected_stiffness_mat))
+
+    def test_p1_explicit_points_on_ref(self):
+        import numpy as np
+
+        explicit_points_called = []
+        p_order = 1
+
+        def explicit_points(start, stop, loc_num_points):
+            explicit_points_called.append((start, stop, loc_num_points))
+            # NOTE: This result assumes we know p_order == 1.
+            self.assertEqual(loc_num_points, 2)
+            return np.array([1.0, 4.0])
+
+        mass_mat, stiffness_mat = self._call_func_under_test(
+            p_order, points_on_ref_int=explicit_points)
+        self.assertTrue(isinstance(mass_mat, np.ndarray))
+        self.assertTrue(isinstance(stiffness_mat, np.ndarray))
+        self.assertEqual(explicit_points_called, [(-1, 1, p_order + 1)])
+        # We have the basis functions PHI_0 = (4 - x) / 3 and
+        # PHI_1 = (x - 1) / 3. When we integrate them:
+        # M_{00} = 1 / 9 INTEGRAL_{-1}^1 (4 - x)^2 dx
+        #        = (1 - 4)^3 / 27 - ((-1) - 4)^3 / 27 = 98 / 27
+        # M_{11} = 1 / 9 INTEGRAL_{-1}^1 (x - 1)^2 dx
+        #        = (1 - 1)^3/27 - ((-1) - 1)^3/27 = 8 / 27
+        # M_{01} = 1 / 9 INTEGRAL_{-1}^1 (4 - x)(x - 1) dx = -26 / 27
+        self.assertTrue(np.allclose(27 * mass_mat, [[98, -26], [-26, 8]]))
+        # Since PHI_0' = -1/3, PHI_1' = 1/3
+        # K_{00} = -1 / 9 INTEGRAL_{-1}^1 (4 - x) dx
+        #        = (1 - 4)^2/18 - ((-1) - 4)^2/18 = -16 / 18
+        # K_{11} = 1 / 9 INTEGRAL_{-1}^1 (x - 1) dx
+        #        = (1 - 1)^2/18 - ((-1) - 1)^2/18 = -4 / 18
+        # K_{01} = - K_{11}
+        self.assertTrue(np.all(9 * stiffness_mat == [[-8, 2], [-2, -2]]))
 
     def test_p2(self):
         import numpy as np
@@ -601,9 +634,11 @@ class Test_low_storage_rk(unittest.TestCase):
 class Test_get_node_points(unittest.TestCase):
 
     @staticmethod
-    def _call_func_under_test(num_points, p_order, step_size=None):
+    def _call_func_under_test(num_points, p_order, step_size=None,
+                              points_on_ref_int=None):
         from assignment1.dg1 import get_node_points
-        return get_node_points(num_points, p_order, step_size=step_size)
+        return get_node_points(num_points, p_order, step_size=step_size,
+                               points_on_ref_int=points_on_ref_int)
 
     def test_default_step_size(self):
         import numpy as np
@@ -634,6 +669,29 @@ class Test_get_node_points(unittest.TestCase):
             [6, 10, 14, 18],
         ]
         self.assertTrue(np.allclose(18 * result, expected_result))
+
+    def test_explicit_points_on_ref(self):
+        import numpy as np
+
+        explicit_points_called = []
+        p_order = 1
+        num_points = 4
+
+        def explicit_points(start, stop, loc_num_points):
+            explicit_points_called.append((start, stop, loc_num_points))
+            # NOTE: This result assumes we know p_order = 1
+            self.assertEqual(loc_num_points, 2)
+            return np.array([3.0, 7.0])
+
+        result = self._call_func_under_test(num_points, p_order,
+                                            points_on_ref_int=explicit_points)
+        self.assertEqual(explicit_points_called,
+                         [(0, 1.0/num_points, p_order + 1)])
+        self.assertEqual(result.shape, (p_order + 1, num_points))
+        self.assertTrue(np.all(result == [
+            [3.0, 3.25, 3.5, 3.75],
+            [7.0, 7.25, 7.5, 7.75],
+        ]))
 
 
 class Test_get_gaussian_like_initial_data(unittest.TestCase):

@@ -359,17 +359,19 @@ def get_evenly_spaced_points(start, stop, num_points):
     return np.linspace(start, stop, num_points)
 
 
-def find_matrices(p_order):
+def find_matrices(p_order, points_on_ref_int=None):
     r"""Find mass and stiffness matrices.
 
-    We do this on the reference interval :math:`\left[-1, 1\right]`
-    with the evenly spaced points
+    We do this on the reference interval :math:`\left[-1, 1\right]`.
+    By default we use the evenly spaced points
 
     .. math::
 
        x_0 = -1, x_1 = -(p - 2)/p, \ldots, x_p = 1
 
-    and compute the polynomials :math:`\varphi_j(x)` such that
+    but the set of nodes to use on the reference interval can be specified
+    via the ``points_on_ref_int`` argument. With our points, we
+    compute the polynomials :math:`\varphi_j(x)` such that
     :math:`\varphi_j\left(x_i\right) = \delta_{ij}`. We do this by
     writing
 
@@ -460,12 +462,20 @@ def find_matrices(p_order):
     :type p_order: int
     :param p_order: The degree of precision for the method.
 
+    :type points_on_ref_int: :data:`function <types.FunctionType>`
+    :param points_on_ref_int: (Optional) The method used to partition the
+                              reference interval :math:`\left[0, h\right]`
+                              into node points. Defaults to
+                              :func:`get_evenly_spaced_points`.
+
     :rtype: tuple
     :returns: Pair of mass and stiffness matrices, square
               :class:`numpy.ndarray` of dimension ``p_order + 1``.
     """
+    if points_on_ref_int is None:
+        points_on_ref_int = get_evenly_spaced_points
     # Find the coefficients of the L_n(x) for each basis function.
-    x_vals = get_evenly_spaced_points(-1, 1, p_order + 1)
+    x_vals = points_on_ref_int(-1, 1, p_order + 1)
     coeff_mat = np.linalg.inv(get_legendre_matrix(x_vals))
 
     # Populate the mass and stiffness matrices.
@@ -550,7 +560,8 @@ def low_storage_rk(ode_func, u_val, dt):
     return u_curr
 
 
-def get_node_points(num_points, p_order, step_size=None):
+def get_node_points(num_points, p_order, step_size=None,
+                    points_on_ref_int=None):
     r"""Return node points to split unit interval for DG.
 
     :type num_points: int
@@ -563,6 +574,12 @@ def get_node_points(num_points, p_order, step_size=None):
     :type step_size: float
     :param step_size: (Optional) The step size :math:`1 / n`.
 
+    :type points_on_ref_int: :data:`function <types.FunctionType>`
+    :param points_on_ref_int: (Optional) The method used to partition the
+                              reference interval :math:`\left[0, h\right]`
+                              into node points. Defaults to
+                              :func:`get_evenly_spaced_points`.
+
     :rtype: :class:`numpy.ndarray`
     :returns: The :math:`x`-values for the node points, with
               ``p_order + 1`` rows and :math:`n` columns. The columns
@@ -571,9 +588,11 @@ def get_node_points(num_points, p_order, step_size=None):
     """
     if step_size is None:
         step_size = 1.0 / num_points
+    if points_on_ref_int is None:
+        points_on_ref_int = get_evenly_spaced_points
     interval_starts = np.linspace(0, 1 - step_size, num_points)
     # Split the first interval [0, h] in ``p_order + 1`` points.
-    first_interval = get_evenly_spaced_points(0, step_size, p_order + 1)
+    first_interval = points_on_ref_int(0, step_size, p_order + 1)
     # Broadcast the values with ``first_interval`` as rows and
     # columns as ``interval_starts``.
     return (first_interval[:, np.newaxis] +
