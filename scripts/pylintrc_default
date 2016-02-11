@@ -389,7 +389,7 @@ max-parents=7
 # Maximum number of attributes for a class (see R0902).
 # DEFAULT: max-attributes=7
 # RATIONALE: DG1Solver defines more attributes
-max-attributes=11
+max-attributes=12
 
 # Minimum number of public methods for a class (see R0903).
 min-public-methods=2

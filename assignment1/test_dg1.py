@@ -733,16 +733,18 @@ class TestDG1Solver(unittest.TestCase):
         return DG1Solver
 
     def _make_one(self, num_intervals, p_order, total_time, dt,
-                  get_initial_data=None):
+                  get_initial_data=None, points_on_ref_int=None):
         return self._get_target_class()(num_intervals, p_order,
                                         total_time, dt,
-                                        get_initial_data=get_initial_data)
+                                        get_initial_data=get_initial_data,
+                                        points_on_ref_int=points_on_ref_int)
 
     def _constructor_helper(self, p_order, nodes, soln, mass_mat,
-                            stiffness_mat, get_initial_data=None):
+                            stiffness_mat, get_initial_data=None,
+                            points_on_ref_int=None):
         solver = self._make_one(self.num_intervals, p_order, self.total_time,
-                                self.dt,
-                                get_initial_data=get_initial_data)
+                                self.dt, get_initial_data=get_initial_data,
+                                points_on_ref_int=points_on_ref_int)
         self.assertIsInstance(solver, self._get_target_class())
         self.assertEqual(solver.num_intervals, self.num_intervals)
         self.assertEqual(solver.p_order, p_order)
@@ -757,41 +759,13 @@ class TestDG1Solver(unittest.TestCase):
         self.assertEqual(solver.stiffness_mat, stiffness_mat)
 
     @mock.patch('assignment1.dg1.get_node_points')
-    @mock.patch('assignment1.dg1.get_gaussian_like_initial_data')
-    def _constructor_small_p_helper(self, p_order, init_data, get_nodes):
-        # Set-up mocks.
-        get_nodes.return_value = nodes = object()
-        init_data.return_value = object()
-        mock_mass_base = mock.MagicMock()
-        mock_stiffness = object()
-        mock_mass_base.__rmul__.return_value = mock_mass = object()
-
-        patch_name = ('assignment1.dg1.'
-                      'mass_and_stiffness_matrices_p%d' % (p_order,))
-        with mock.patch(patch_name) as get_mats:
-            get_mats.return_value = mock_mass_base, mock_stiffness
-            self._constructor_helper(p_order, nodes, init_data.return_value,
-                                     mock_mass, mock_stiffness)
-        # Verify mocks were called.
-        get_nodes.assert_called_once_with(self.num_intervals, p_order,
-                                          step_size=self.step_size)
-        init_data.assert_called_once_with(nodes)
-        get_mats.assert_called_once_with()
-        mock_mass_base.__rmul__.assert_called_once_with(self.step_size)
-
-    def test_constructor_small_p(self):
-        self._constructor_small_p_helper(1)
-        self._constructor_small_p_helper(2)
-        self._constructor_small_p_helper(3)
-
-    @mock.patch('assignment1.dg1.get_node_points')
-    @mock.patch('assignment1.dg1.mass_and_stiffness_matrices_p1')
-    def test_constructor_explicit_init_data(self, get_mats, get_nodes):
+    @mock.patch('assignment1.dg1.find_matrices')
+    def test_constructor_explicit_init_data(self, find_mats, get_nodes):
         # Set-up mocks.
         get_nodes.return_value = nodes = object()
         mock_mass_base = mock.MagicMock()
         mock_stiffness = object()
-        get_mats.return_value = mock_mass_base, mock_stiffness
+        find_mats.return_value = mock_mass_base, mock_stiffness
         mock_mass_base.__rmul__.return_value = mock_mass = object()
 
         init_data_obj = object()
@@ -803,39 +777,49 @@ class TestDG1Solver(unittest.TestCase):
 
         # Construct the object.
         p_order = 1
+        get_points = object()
         self._constructor_helper(p_order, nodes, init_data_obj,
                                  mock_mass, mock_stiffness,
-                                 get_initial_data=init_data)
+                                 get_initial_data=init_data,
+                                 points_on_ref_int=get_points)
         # Verify mocks were called.
         get_nodes.assert_called_once_with(self.num_intervals, p_order,
-                                          step_size=self.step_size)
+                                          step_size=self.step_size,
+                                          points_on_ref_int=get_points)
         self.assertEqual(init_data_points, [nodes])
-        get_mats.assert_called_once_with()
-        mock_mass_base.__rmul__.assert_called_once_with(self.step_size)
+        find_mats.assert_called_once_with(p_order,
+                                          points_on_ref_int=get_points)
+        mock_mass_base.__rmul__.assert_called_once_with(0.5 * self.step_size)
 
     @mock.patch('assignment1.dg1.get_node_points')
     @mock.patch('assignment1.dg1.find_matrices')
     @mock.patch('assignment1.dg1.get_gaussian_like_initial_data')
-    def test_constructor_large_p(self, init_data, find_mats, get_nodes):
+    def _constructor_defaults_helper(self, p_order, init_data,
+                                     find_mats, get_nodes):
         # Set-up mocks.
         get_nodes.return_value = nodes = object()
         init_data.return_value = object()
         mock_mass1 = mock.MagicMock()
         mock_stiffness = object()
         find_mats.return_value = mock_mass1, mock_stiffness
-        mock_mass1.__rmul__.return_value = mock_mass2 = mock.MagicMock()
-        mock_mass2.__rmul__.return_value = mock_mass3 = object()
+        mock_mass1.__rmul__.return_value = mock_mass2 = object()
         # Construct the object.
-        p_order = 10
         self._constructor_helper(p_order, nodes, init_data.return_value,
-                                 mock_mass3, mock_stiffness)
+                                 mock_mass2, mock_stiffness)
         # Verify mocks were called.
         get_nodes.assert_called_once_with(self.num_intervals, p_order,
-                                          step_size=self.step_size)
+                                          step_size=self.step_size,
+                                          points_on_ref_int=None)
         init_data.assert_called_once_with(nodes)
-        find_mats.assert_called_once_with(p_order)
-        mock_mass1.__rmul__.assert_called_once_with(0.5)
-        mock_mass2.__rmul__.assert_called_once_with(self.step_size)
+        find_mats.assert_called_once_with(p_order, points_on_ref_int=None)
+        mock_mass1.__rmul__.assert_called_once_with(0.5 * self.step_size)
+
+    def test_constructor_small_and_large_p(self):
+        self._constructor_defaults_helper(1)
+        self._constructor_defaults_helper(2)
+        self._constructor_defaults_helper(3)
+        self._constructor_defaults_helper(4)
+        self._constructor_defaults_helper(10)
 
     def test_constructor_no_mocks(self):
         import numpy as np

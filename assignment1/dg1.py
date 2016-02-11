@@ -669,20 +669,29 @@ class DG1Solver(object):
                              :math:`u(x, 0)` at the points in our solution.
                              Defaults to
                              :func:`get_gaussian_like_initial_data`.
+
+    :type points_on_ref_int: :data:`function <types.FunctionType>`
+    :param points_on_ref_int: (Optional) The method used to partition the
+                              reference interval :math:`\left[0, h\right]`
+                              into node points. Defaults to
+                              :func:`get_evenly_spaced_points`.
     """
 
     def __init__(self, num_intervals, p_order, total_time, dt,
-                 get_initial_data=None):
+                 get_initial_data=None, points_on_ref_int=None):
         self.num_intervals = num_intervals
         self.p_order = p_order
         self.total_time = total_time
         self.dt = dt
         self.current_step = 0
+        self.points_on_ref_int = points_on_ref_int
         # Computed values.
         self.num_steps = int(np.round(self.total_time / self.dt))
         self.step_size = 1.0 / self.num_intervals
-        self.node_points = get_node_points(self.num_intervals, self.p_order,
-                                           step_size=self.step_size)
+        self.node_points = get_node_points(
+            self.num_intervals, self.p_order,
+            step_size=self.step_size,
+            points_on_ref_int=self.points_on_ref_int)
         # The solution: u(x, t).
         if get_initial_data is None:
             get_initial_data = get_gaussian_like_initial_data
@@ -704,20 +713,12 @@ class DG1Solver(object):
         :returns: Pair of mass and stiffness matrices, both with
                   ``p_order + 1`` rows and columns.
         """
-        if self.p_order == 1:
-            mass_mat, stiffness_mat = mass_and_stiffness_matrices_p1()
-        elif self.p_order == 2:
-            mass_mat, stiffness_mat = mass_and_stiffness_matrices_p2()
-        elif self.p_order == 3:
-            mass_mat, stiffness_mat = mass_and_stiffness_matrices_p3()
-        else:
-            mass_mat, stiffness_mat = find_matrices(self.p_order)
-            # We are solving on [0, 1] but ``find_matrices`` is
-            # on [-1, 1], and the mass matrix is translation invariant
-            # but scales with interval length.
-            mass_mat = 0.5 * mass_mat
-
-        return self.step_size * mass_mat, stiffness_mat
+        mass_mat, stiffness_mat = find_matrices(
+            self.p_order, points_on_ref_int=self.points_on_ref_int)
+        # We are solving on [0, 1] but ``find_matrices`` is
+        # on [-1, 1], and the mass matrix is translation invariant
+        # but scales with interval length.
+        return self.step_size * 0.5 * mass_mat, stiffness_mat
 
     def ode_func(self, u_val):
         r"""Compute the right-hand side for the ODE.
