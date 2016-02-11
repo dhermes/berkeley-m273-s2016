@@ -475,6 +475,29 @@ class Test__find_matrices_helper(unittest.TestCase):
         self.assertEqual(result, u0 * (v1 + v3) + u1 * v2 + u2 * v3)
 
 
+class Test_get_evenly_spaced_points(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(start, stop, num_points):
+        from assignment1.dg1 import get_evenly_spaced_points
+        return get_evenly_spaced_points(start, stop, num_points)
+
+    @mock.patch('numpy.linspace', return_value=object())
+    def test_shadows_np_linspace(self, linspace_mock):
+        start = object()
+        stop = object()
+        num_points = object()
+        result = self._call_func_under_test(start, stop, num_points)
+        self.assertEqual(result, linspace_mock.return_value)
+        linspace_mock.assert_called_once_with(start, stop, num_points)
+
+    def test_simple_interval(self):
+        import numpy as np
+
+        result = self._call_func_under_test(0, 1, 5)
+        self.assertTrue(np.all(result == [0, 0.25, 0.5, 0.75, 1]))
+
+
 class Test_find_matrices(unittest.TestCase):
 
     @staticmethod
@@ -854,9 +877,7 @@ class TestDG1Solver(unittest.TestCase):
             dx *= 0.5
             dt *= 0.5
 
-        log_h = np.log2(h_vals)
-        log_err = np.log2(errors)
-        conv_rate, const = np.polyfit(log_h, log_err, deg=1)
+        conv_rate, _ = np.polyfit(np.log2(h_vals), np.log2(errors), deg=1)
         self.assertTrue(conv_rate >= p_order - drop_off)
         self.assertTrue(conv_rate < p_order + 1 - drop_off)
 

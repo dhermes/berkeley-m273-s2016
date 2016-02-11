@@ -339,6 +339,27 @@ def _find_matrices_helper(vals1, vals2):
     return result
 
 
+def get_evenly_spaced_points(start, stop, num_points):
+    """Get points on an interval that are evenly spaced.
+
+    This is intended to be used to give points on a reference
+    interval when using DG on the 1D problem.
+
+    :type start: float
+    :param start: The beginning of the interval.
+
+    :type stop: float
+    :param stop: The end of the interval.
+
+    :type num_points: int
+    :param num_points: The number of points to use on the interval.
+
+    :rtype: :class:`numpy.ndarray`
+    :returns: The evenly spaced points on the interval.
+    """
+    return np.linspace(start, stop, num_points)
+
+
 def find_matrices(p_order):
     """Find mass and stiffness matrices.
 
@@ -445,7 +466,7 @@ def find_matrices(p_order):
               :class:`numpy.ndarray` of dimension ``p_order + 1``.
     """
     # Find the coefficients of the L_n(x) for each basis function.
-    x_vals = np.linspace(-1, 1, p_order + 1)
+    x_vals = get_evenly_spaced_points(-1, 1, p_order + 1)
     coeff_mat = np.linalg.inv(get_legendre_matrix(x_vals))
 
     # Populate the mass and stiffness matrices.
@@ -531,7 +552,7 @@ def low_storage_rk(ode_func, u_val, dt):
 
 
 def get_node_points(num_points, p_order, step_size=None):
-    """Return node points to splitting unit interval for DG.
+    """Return node points to split unit interval for DG.
 
     :type num_points: int
     :param num_points: The number :math:`n` of intervals to divide
@@ -552,8 +573,8 @@ def get_node_points(num_points, p_order, step_size=None):
     if step_size is None:
         step_size = 1.0 / num_points
     interval_starts = np.linspace(0, 1 - step_size, num_points)
-    # Split the first interval [0, h] in ``p_order + 1`` points
-    first_interval = np.linspace(0, step_size, p_order + 1)
+    # Split the first interval [0, h] in ``p_order + 1`` points.
+    first_interval = get_evenly_spaced_points(0, step_size, p_order + 1)
     # Broadcast the values with ``first_interval`` as rows and
     # columns as ``interval_starts``.
     return (first_interval[:, np.newaxis] +
