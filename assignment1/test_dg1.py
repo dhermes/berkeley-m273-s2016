@@ -839,15 +839,9 @@ class TestDG1Solver(unittest.TestCase):
 
         T = 1.0
         num_intervals = 4
-        if p_order < 4:
-            # NOTE: dt / dx == 1 / 8
-            #  <==> num_steps == 8 num_intervals
-            dt = T / (8.0 * num_intervals)
-        else:
-            # NOTE: dt / dx == 1 / 16
-            #  <==> num_steps == 16 num_intervals
-            dt = T / (16.0 * num_intervals)
+        # NOTE: dt / dx == 1 / (3 p^2)
         dx = 1.0 / num_intervals
+        dt = dx / (3 * p_order * p_order)
         h_vals = []
         errors = []
         for _ in six.moves.xrange(5):
@@ -860,7 +854,9 @@ class TestDG1Solver(unittest.TestCase):
             dx *= 0.5
             dt *= 0.5
 
-        conv_rate, _ = np.polyfit(np.log2(h_vals), np.log2(errors), deg=1)
+        log_h = np.log2(h_vals)
+        log_err = np.log2(errors)
+        conv_rate, const = np.polyfit(log_h, log_err, deg=1)
         self.assertTrue(conv_rate >= p_order - drop_off)
         self.assertTrue(conv_rate < p_order + 1 - drop_off)
 
@@ -877,4 +873,4 @@ class TestDG1Solver(unittest.TestCase):
         self._convergence_helper(4)
 
     def test_quintic_convergence(self):
-        self._convergence_helper(5, drop_off=0.5)
+        self._convergence_helper(5)
