@@ -67,6 +67,7 @@ confidence=
 #    no-member: pylint is too aggressive about these, e.g. Module 'numpy'
 #               has no 'fill_diagonal' member and other cases where type
 #               inference is incorrect.
+#    similarities: plotting has similarities to dg1.
 disable =
     import-star-module-level,
     old-octal-literal,
@@ -120,6 +121,7 @@ disable =
     map-builtin-not-iterating,
     I,
     no-member,
+    similarities,
 
 
 [REPORTS]

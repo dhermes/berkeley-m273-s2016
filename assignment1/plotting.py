@@ -319,9 +319,11 @@ class DG1Animate(object):
         return self.plot_lines
 
 
+# pylint: disable=too-many-locals
 def plot_convergence(p_order, interval_sizes, colors, solver_factory,
-                     interval_width=1.0, total_time=1.0):  #  pragma: NO COVER
-    """Plots a convergence plot for a given order.
+                     interval_width=1.0, total_time=1.0,
+                     points_on_ref_int=None):  # pragma: NO COVER
+    r"""Plots a convergence plot for a given order.
 
     Creates a side-by-side of error plots and the solutions as the mesh
     is refined.
@@ -347,6 +349,12 @@ def plot_convergence(p_order, interval_sizes, colors, solver_factory,
     :type total_time: float
     :param total_time: (Optional) The total time to run the solver. Defaults
                        to 1.0.
+
+    :type points_on_ref_int: :data:`function <types.FunctionType>`
+    :param points_on_ref_int: (Optional) The method used to partition the
+                              reference interval :math:`\left[0, h\right]`
+                              into node points. Defaults to
+                              :func:`get_evenly_spaced_points`.
     """
     import matplotlib.pyplot as plt
     # Prepare plots.
@@ -365,7 +373,8 @@ def plot_convergence(p_order, interval_sizes, colors, solver_factory,
     for num_intervals, dt, color in zip(interval_sizes, dt_vals, colors):
         solver = solver_factory(num_intervals=num_intervals,
                                 p_order=p_order,
-                                total_time=total_time, dt=dt)
+                                total_time=total_time, dt=dt,
+                                points_on_ref_int=points_on_ref_int)
         # Save initial solution for later comparison (though a copy is
         # not strictly needed).
         init_soln = solver.solution.copy()
@@ -395,3 +404,4 @@ def plot_convergence(p_order, interval_sizes, colors, solver_factory,
     ax1.legend(loc='upper left', fontsize=14)
     ax2.legend(loc='upper right', fontsize=14)
     plt.show()
+# pylint: enable=too-many-locals
