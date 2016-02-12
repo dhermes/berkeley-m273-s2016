@@ -317,3 +317,81 @@ class DG1Animate(object):
         for index, line in enumerate(self.plot_lines):
             line.set_ydata(all_y[:, index])
         return self.plot_lines
+
+
+def plot_convergence(p_order, interval_sizes, colors, solver_factory,
+                     interval_width=1.0, total_time=1.0):  #  pragma: NO COVER
+    """Plots a convergence plot for a given order.
+
+    Creates a side-by-side of error plots and the solutions as the mesh
+    is refined.
+
+    :type p_order: int
+    :param p_order: The order of accuracy desired.
+
+    :type interval_sizes: :class:`numpy.ndarray`
+    :param interval_sizes: Array of :math:`n` values to use for the number
+                           of sub-intervals.
+
+    :type colors: list
+    :param colors: List of triples RGB (each a color). Expected to be the
+                   same length as ``interval_sizes``.
+
+    :type solver_factory: type
+    :param solver_factory: Class that can be used to construct a solver.
+
+    :type interval_width: float
+    :param interval_width: (Optional) The width of the interval where the
+                           solver works. Defaults to 1.0.
+
+    :type total_time: float
+    :param total_time: (Optional) The total time to run the solver. Defaults
+                       to 1.0.
+    """
+    import matplotlib.pyplot as plt
+    # Prepare plots.
+    rows, cols = 1, 2
+    fig, (ax1, ax2) = plt.subplots(rows, cols)
+
+    # Prepare mesh sizes.
+    interval_sizes = np.array(interval_sizes)
+    dx_vals = interval_width / interval_sizes
+    # For the CFL condition: dt = dx / (3 * p * p)
+    dt_vals = dx_vals / (3.0 * p_order * p_order)
+
+    # Compute solution on various meshes.
+    log2_h = []
+    log2_errs = []
+    for num_intervals, dt, color in zip(interval_sizes, dt_vals, colors):
+        solver = solver_factory(num_intervals=num_intervals,
+                                p_order=p_order,
+                                total_time=total_time, dt=dt)
+        # Save initial solution for later comparison (though a copy is
+        # not strictly needed).
+        init_soln = solver.solution.copy()
+        while solver.current_step != solver.num_steps:
+            solver.update()
+
+        frob_err = np.linalg.norm(init_soln - solver.solution, ord='fro')
+        log2_h.append(np.log2(interval_width / num_intervals))
+        log2_errs.append(np.log2(frob_err))
+        interp_func = PolynomialInterpolate.from_solver(solver)
+        plotted_lines = plot_solution(color, num_intervals,
+                                      interp_func, solver, ax2)
+        plt_label = '$n = %d$' % (num_intervals,)
+        # Just label the first line (they'll all have the same color).
+        plotted_lines[0].set_label(plt_label)
+
+    # Plot the errors.
+    ax1.plot(log2_h, log2_errs, label='errors')
+    conv_rate, fit_const = np.polyfit(log2_h, log2_errs, deg=1)
+    fit_line = conv_rate * np.array(log2_h) + fit_const
+    ax1.plot(log2_h, fit_line, label='fit line')
+
+    # Configure the plot.
+    fig.set_size_inches(15, 8)
+    fig_title = r'$p = %d, rate = %g$' % (p_order, conv_rate)
+    fig.suptitle(fig_title, fontsize=20)
+    ax1.legend(loc='upper left', fontsize=14)
+    ax2.legend(loc='upper right', fontsize=14)
+    plt.show()
