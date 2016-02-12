@@ -200,7 +200,7 @@ def find_matrices_symbolic(p_order):
     return mass_mat, stiffness_mat
 
 
-def gauss_lobatto_points(num_points):
+def gauss_lobatto_points(start, stop, num_points):
     r"""Get the node points for Gauss-Lobatto quadrature.
 
     Using :math:`n` points, this quadrature is accurate to degree
@@ -223,6 +223,12 @@ def gauss_lobatto_points(num_points):
        w_j = \frac{2}{\left(1 - x_j\right)^2
                 \left[P'_n\left(x_j\right)\right]^2}
 
+    :type start: float
+    :param start: The beginning of the interval.
+
+    :type stop: float
+    :param stop: The end of the interval.
+
     :type num_points: int
     :param num_points: The number of points to use.
 
@@ -233,7 +239,10 @@ def gauss_lobatto_points(num_points):
     inner_nodes = legendre.legroots(legendre.legder(p_n_minus1))
     # Utilize symmetry about 0.
     inner_nodes = 0.5 * (inner_nodes - inner_nodes[::-1])
-    return inner_nodes
+    if start != -1.0 or stop != 1.0:
+        # [-1, 1] --> [0, 2] --> [0, stop - start] --> [start, stop]
+        inner_nodes = start + (inner_nodes + 1.0) * 0.5 * (stop - start)
+    return np.hstack([[start], inner_nodes, [stop]])
 
 
 def get_legendre_matrix(points, max_degree=None):

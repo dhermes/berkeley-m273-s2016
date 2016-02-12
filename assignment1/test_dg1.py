@@ -76,9 +76,9 @@ class Test_find_matrices_symbolic(unittest.TestCase):
 class Test_gauss_lobatto_points(unittest.TestCase):
 
     @staticmethod
-    def _call_func_under_test(num_points):
+    def _call_func_under_test(start, stop, num_points):
         from assignment1.dg1 import gauss_lobatto_points
-        return gauss_lobatto_points(num_points)
+        return gauss_lobatto_points(start, stop, num_points)
 
     def test_five_points(self):
         import numpy as np
@@ -88,7 +88,12 @@ class Test_gauss_lobatto_points(unittest.TestCase):
         num_points = 5
         p4 = sympy.legendre(num_points - 1, t_symb)
         p4_prime = p4.diff(t_symb)
-        inner_nodes = self._call_func_under_test(num_points)
+        start = -1.0
+        stop = 1.0
+        all_nodes = self._call_func_under_test(start, stop, num_points)
+        self.assertEqual(all_nodes[0], start)
+        self.assertEqual(all_nodes[-1], stop)
+        inner_nodes = all_nodes[1:-1]
         # Make sure the computed roots are actually roots.
         self.assertTrue(np.allclose(
             [float(p4_prime.subs({t_symb: root}))
@@ -97,8 +102,16 @@ class Test_gauss_lobatto_points(unittest.TestCase):
     def test_symmetry(self):
         import numpy as np
 
-        inner_nodes = self._call_func_under_test(15)
-        self.assertTrue(np.all(inner_nodes == -inner_nodes[::-1]))
+        all_nodes = self._call_func_under_test(-1.0, 1.0, 15)
+        self.assertTrue(np.all(all_nodes == -all_nodes[::-1]))
+
+    def test_non_standard_interval(self):
+        import numpy as np
+
+        all_nodes = self._call_func_under_test(0.0, 10.0, 4)
+        # [-1, 1/sqrt(5), 1/sqrt(5), 1] --> [0, 1-1/sqrt(5), 1+1/sqrt(5), 2]
+        self.assertTrue(np.allclose(
+            all_nodes, [0.0, 5 - np.sqrt(5), 5.0 + np.sqrt(5), 10.0]))
 
     @staticmethod
     def _accuracy_helper(degree, all_nodes, all_weights):
@@ -129,7 +142,10 @@ class Test_gauss_lobatto_points(unittest.TestCase):
         import six
 
         num_points = 4
-        inner_nodes = self._call_func_under_test(num_points)
+        all_nodes = self._call_func_under_test(-1.0, 1.0, num_points)
+        self.assertEqual(all_nodes[0], -1.0)
+        self.assertEqual(all_nodes[-1], 1.0)
+        inner_nodes = all_nodes[1:-1]
         inner_weights = self._get_weights(num_points, inner_nodes)
         all_nodes = np.hstack([[-1], inner_nodes, [1]])
         base_weight = 2.0 / (num_points * (num_points - 1))
@@ -279,7 +295,10 @@ class Test_get_legendre_matrix(unittest.TestCase):
         import numpy as np
         from assignment1.dg1 import gauss_lobatto_points
 
-        inner_nodes = gauss_lobatto_points(num_nodes)
+        all_nodes = gauss_lobatto_points(-1.0, 1.0, num_nodes)
+        self.assertEqual(all_nodes[0], -1.0)
+        self.assertEqual(all_nodes[-1], 1.0)
+        inner_nodes = all_nodes[1:-1]
         if zero_centered:
             x_vals = np.hstack([[-1], inner_nodes, [1]])
         else:
