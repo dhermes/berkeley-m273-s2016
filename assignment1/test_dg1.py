@@ -73,119 +73,6 @@ class Test_find_matrices_symbolic(unittest.TestCase):
                          [[-3, -4, 1], [4, 0, -4], [-1, 4, 3]])
 
 
-class Test_mass_and_stiffness_matrices_p1(unittest.TestCase):
-
-    @staticmethod
-    def _call_func_under_test():
-        from assignment1.dg1 import mass_and_stiffness_matrices_p1
-        return mass_and_stiffness_matrices_p1()
-
-    def test_value(self):
-        import numpy as np
-
-        # Make sure multiple calls give identical data.
-        mass_mat, stiffness_mat = self._call_func_under_test()
-        self.assertTrue(isinstance(mass_mat, np.ndarray))
-        self.assertTrue(isinstance(stiffness_mat, np.ndarray))
-
-        self.assertTrue(np.all(6 * mass_mat == [[2, 1], [1, 2]]))
-        self.assertTrue(np.all(2 * stiffness_mat == [[-1, -1], [1, 1]]))
-
-    def test_identical(self):
-        import numpy as np
-
-        # Make sure multiple calls give identical data.
-        mass_mat1, stiffness_mat1 = self._call_func_under_test()
-        self.assertTrue(isinstance(mass_mat1, np.ndarray))
-        self.assertTrue(isinstance(stiffness_mat1, np.ndarray))
-        mass_mat2, stiffness_mat2 = self._call_func_under_test()
-
-        self.assertFalse(mass_mat1 is mass_mat2)
-        self.assertTrue(np.all(mass_mat1 == mass_mat2))
-        self.assertFalse(stiffness_mat1 is stiffness_mat2)
-        self.assertTrue(np.all(stiffness_mat1 == stiffness_mat2))
-
-
-class Test_mass_and_stiffness_matrices_p2(unittest.TestCase):
-
-    @staticmethod
-    def _call_func_under_test():
-        from assignment1.dg1 import mass_and_stiffness_matrices_p2
-        return mass_and_stiffness_matrices_p2()
-
-    def test_value(self):
-        import numpy as np
-
-        # Make sure multiple calls give identical data.
-        mass_mat, stiffness_mat = self._call_func_under_test()
-        self.assertTrue(isinstance(mass_mat, np.ndarray))
-        self.assertTrue(isinstance(stiffness_mat, np.ndarray))
-
-        expected_mass_mat = [[4, 2, -1], [2, 16, 2], [-1, 2, 4]]
-        self.assertTrue(np.all(30 * mass_mat == expected_mass_mat))
-        expected_stiffness_mat = [[-3, -4, 1], [4, 0, -4], [-1, 4, 3]]
-        self.assertTrue(np.all(6 * stiffness_mat == expected_stiffness_mat))
-
-    def test_identical(self):
-        import numpy as np
-
-        # Make sure multiple calls give identical data.
-        mass_mat1, stiffness_mat1 = self._call_func_under_test()
-        self.assertTrue(isinstance(mass_mat1, np.ndarray))
-        self.assertTrue(isinstance(stiffness_mat1, np.ndarray))
-        mass_mat2, stiffness_mat2 = self._call_func_under_test()
-
-        self.assertFalse(mass_mat1 is mass_mat2)
-        self.assertTrue(np.all(mass_mat1 == mass_mat2))
-        self.assertFalse(stiffness_mat1 is stiffness_mat2)
-        self.assertTrue(np.all(stiffness_mat1 == stiffness_mat2))
-
-
-class Test_mass_and_stiffness_matrices_p3(unittest.TestCase):
-
-    @staticmethod
-    def _call_func_under_test():
-        from assignment1.dg1 import mass_and_stiffness_matrices_p3
-        return mass_and_stiffness_matrices_p3()
-
-    def test_value(self):
-        import numpy as np
-
-        # Make sure multiple calls give identical data.
-        mass_mat, stiffness_mat = self._call_func_under_test()
-        self.assertTrue(isinstance(mass_mat, np.ndarray))
-        self.assertTrue(isinstance(stiffness_mat, np.ndarray))
-
-        expected_mass_mat = [
-            [128, 99, -36, 19],
-            [99, 648, -81, -36],
-            [-36, -81, 648, 99],
-            [19, -36, 99, 128],
-        ]
-        self.assertTrue(np.all(1680 * mass_mat == expected_mass_mat))
-        expected_stiffness_mat = [
-            [-40, -57, 24, -7],
-            [57, 0, -81, 24],
-            [-24, 81, 0, -57],
-            [7, -24, 57, 40],
-        ]
-        self.assertTrue(np.all(80 * stiffness_mat == expected_stiffness_mat))
-
-    def test_identical(self):
-        import numpy as np
-
-        # Make sure multiple calls give identical data.
-        mass_mat1, stiffness_mat1 = self._call_func_under_test()
-        self.assertTrue(isinstance(mass_mat1, np.ndarray))
-        self.assertTrue(isinstance(stiffness_mat1, np.ndarray))
-        mass_mat2, stiffness_mat2 = self._call_func_under_test()
-
-        self.assertFalse(mass_mat1 is mass_mat2)
-        self.assertTrue(np.all(mass_mat1 == mass_mat2))
-        self.assertFalse(stiffness_mat1 is stiffness_mat2)
-        self.assertTrue(np.all(stiffness_mat1 == stiffness_mat2))
-
-
 class Test_gauss_lobatto_points(unittest.TestCase):
 
     @staticmethod
@@ -507,19 +394,24 @@ class Test_find_matrices(unittest.TestCase):
 
     def test_p1(self):
         import numpy as np
-        from assignment1.dg1 import mass_and_stiffness_matrices_p1
 
         mass_mat, stiffness_mat = self._call_func_under_test(1)
-        (expected_mass_mat,
-         expected_stiffness_mat) = mass_and_stiffness_matrices_p1()
         self.assertTrue(isinstance(mass_mat, np.ndarray))
         self.assertTrue(isinstance(stiffness_mat, np.ndarray))
         # We are solving on [0, 1] but ``find_matrices`` is
         # on [-1, 1], and the mass matrix is translation invariant
         # but scales with interval length.
-        self.assertTrue(np.allclose(0.5 * mass_mat, expected_mass_mat))
+        mass_mat_p1 = np.array([
+            [2, 1],
+            [1, 2],
+        ]) / 6.0
+        self.assertTrue(np.allclose(0.5 * mass_mat, mass_mat_p1))
         # The stiffness matrix is scale and translation invariant.
-        self.assertTrue(np.allclose(stiffness_mat, expected_stiffness_mat))
+        stiffness_mat_p1 = np.array([
+            [-1, -1],
+            [1, 1],
+        ]) / 2.0
+        self.assertTrue(np.allclose(stiffness_mat, stiffness_mat_p1))
 
     def test_p1_explicit_points_on_ref(self):
         import numpy as np
@@ -556,19 +448,51 @@ class Test_find_matrices(unittest.TestCase):
 
     def test_p2(self):
         import numpy as np
-        from assignment1.dg1 import mass_and_stiffness_matrices_p2
 
         mass_mat, stiffness_mat = self._call_func_under_test(2)
-        (expected_mass_mat,
-         expected_stiffness_mat) = mass_and_stiffness_matrices_p2()
         self.assertTrue(isinstance(mass_mat, np.ndarray))
         self.assertTrue(isinstance(stiffness_mat, np.ndarray))
         # We are solving on [0, 1] but ``find_matrices`` is
         # on [-1, 1], and the mass matrix is translation invariant
         # but scales with interval length.
-        self.assertTrue(np.allclose(0.5 * mass_mat, expected_mass_mat))
+        mass_mat_p2 = np.array([
+            [4, 2, -1],
+            [2, 16, 2],
+            [-1, 2, 4],
+        ]) / 30.0
+        self.assertTrue(np.allclose(0.5 * mass_mat, mass_mat_p2))
         # The stiffness matrix is scale and translation invariant.
-        self.assertTrue(np.allclose(stiffness_mat, expected_stiffness_mat))
+        stiffness_mat_p2 = np.array([
+            [-3, -4, 1],
+            [4, 0, -4],
+            [-1, 4, 3],
+        ]) / 6.0
+        self.assertTrue(np.allclose(stiffness_mat, stiffness_mat_p2))
+
+    def test_p3(self):
+        import numpy as np
+
+        mass_mat, stiffness_mat = self._call_func_under_test(3)
+        self.assertTrue(isinstance(mass_mat, np.ndarray))
+        self.assertTrue(isinstance(stiffness_mat, np.ndarray))
+        # We are solving on [0, 1] but ``find_matrices`` is
+        # on [-1, 1], and the mass matrix is translation invariant
+        # but scales with interval length.
+        mass_mat_p3 = np.array([
+            [128, 99, -36, 19],
+            [99, 648, -81, -36],
+            [-36, -81, 648, 99],
+            [19, -36, 99, 128],
+        ]) / 1680.0
+        self.assertTrue(np.allclose(0.5 * mass_mat, mass_mat_p3))
+        # The stiffness matrix is scale and translation invariant.
+        stiffness_mat_p3 = np.array([
+            [-40, -57, 24, -7],
+            [57, 0, -81, 24],
+            [-24, 81, 0, -57],
+            [7, -24, 57, 40],
+        ]) / 80.0
+        self.assertTrue(np.allclose(stiffness_mat, stiffness_mat_p3))
 
 
 class Test_low_storage_rk(unittest.TestCase):
@@ -739,6 +663,7 @@ class TestDG1Solver(unittest.TestCase):
                                         get_initial_data=get_initial_data,
                                         points_on_ref_int=points_on_ref_int)
 
+    # pylint: disable=too-many-arguments
     def _constructor_helper(self, p_order, nodes, soln, mass_mat,
                             stiffness_mat, get_initial_data=None,
                             points_on_ref_int=None):
@@ -757,6 +682,7 @@ class TestDG1Solver(unittest.TestCase):
         self.assertEqual(solver.solution, soln)
         self.assertEqual(solver.mass_mat, mass_mat)
         self.assertEqual(solver.stiffness_mat, stiffness_mat)
+    # pylint: enable=too-many-arguments
 
     @mock.patch('assignment1.dg1.get_node_points')
     @mock.patch('assignment1.dg1.find_matrices')

@@ -8,6 +8,11 @@ solve the problem.
 
 .. _notebook: http://nbviewer.jupyter.org/github/dhermes/\
               berkeley-m273-s2016/blob/master/assignment1/dg1.ipynb
+
+The code previously used the pre-computed mass and stiffness matrices
+using evenly spaced points on :math:`\left[0, 1\right]` for small
+:math:`p`. These values can be verified by :func:`find_matrices_symbolic`
+below.
 """
 
 
@@ -84,6 +89,84 @@ def find_matrices_symbolic(p_order):
 
         K_{ij} = \int_0^1 \varphi_i'(x) \varphi_j(x) \, dx
 
+    Some previously used precomputed values for evenly spaced
+    points on :math:`\left[0, 1\right]` are
+
+    .. math::
+
+       \begin{align*}
+       M_1 = \frac{1}{6} \left[ \begin{array}{c c}
+                          2 & 1 \\
+                          1 & 2
+                        \end{array}\right]
+       & \qquad
+       K_1 = \frac{1}{2} \left[ \begin{array}{c c}
+                          -1 & -1 \\
+                           1 &  1
+                        \end{array}\right]
+       \\
+       M_2 = \frac{1}{30} \left[ \begin{array}{c c c}
+                            4 &  2 & -1 \\
+                            2 & 16 &  2 \\
+                           -1 &  2 &  4
+                         \end{array}\right]
+       & \qquad
+       K_2 = \frac{1}{6} \left[ \begin{array}{c c c}
+                          -3 & -4 &  1 \\
+                           4 &  0 & -4 \\
+                          -1 &  4 &  3
+                        \end{array}\right]
+       \\
+       M_3 = \frac{1}{1680} \left[ \begin{array}{c c c c}
+                              128 &   99 &  -36 &   19 \\
+                               99 &  648 &  -81 &  -36 \\
+                              -36 &  -81 &  648 &   99 \\
+                               19 &  -36 &   99 &  128
+                           \end{array}\right]
+       & \qquad
+       K_3 = \frac{1}{80} \left[ \begin{array}{c c c c}
+                            -40 &  -57 &   24 &   -7 \\
+                             57 &    0 &  -81 &   24 \\
+                            -24 &   81 &    0 &  -57 \\
+                              7 &  -24 &   57 &   40
+                         \end{array}\right]
+       \end{align*}
+
+    In addition, when :math:`p = 3`, the Gauss-Lobatto nodes
+
+    .. math::
+
+        x_0 = -1, \; x_1 = -\frac{1}{\sqrt{5}}, \;
+        x_2 = \frac{1}{\sqrt{5}}, \; x_4 = 1
+
+    are **not** evenly spaced for the first time. These produce
+
+    .. math::
+
+       M_3 = \frac{1}{42} \left[ \begin{array}{c c c c}
+                                     6 &  \sqrt{5} & -\sqrt{5} &  1        \\
+                              \sqrt{5} &        30 &         5 & -\sqrt{5} \\
+                             -\sqrt{5} &         5 &        30 &  \sqrt{5} \\
+                                     1 & -\sqrt{5} &  \sqrt{5} &  6
+                           \end{array}\right]
+
+    and
+
+    .. math::
+
+       K_3 = \frac{1}{24} \left[ \begin{array}{c c c c}
+                              -12 & -5 & -5 & -2 \\
+                                5 &  0 &  0 & -5 \\
+                                5 &  0 &  0 & -5 \\
+                                2 &  5 &  5 & 12
+                           \end{array}\right]
+       + \frac{\sqrt{5}}{24} \left[ \begin{array}{c c c c}
+                                0 & -5 &   5 &  0 \\
+                                5 &  0 & -10 &  5 \\
+                               -5 & 10 &   0 & -5 \\
+                                0 & -5 &   5 &  0
+                           \end{array}\right]
+
     :type p_order: int
     :param p_order: The degree of precision for the method.
 
@@ -114,117 +197,6 @@ def find_matrices_symbolic(p_order):
                 mass_mat[j, i] = mass_mat[i, j]
                 stiffness_mat[j, i] = -stiffness_mat[i, j]
 
-    return mass_mat, stiffness_mat
-
-
-def mass_and_stiffness_matrices_p1():
-    r"""Get mass and stiffness matrices for :math:`p = 1`.
-
-    These are for the interval :math:`\left[0, 1\right]`.
-
-    .. math::
-
-       M = \frac{1}{6} \left[ \begin{array}{c c}
-                          2 & 1 \\
-                          1 & 2
-                        \end{array}\right], \qquad
-       K = \frac{1}{2} \left[ \begin{array}{c c}
-                          -1 & -1 \\
-                           1 &  1
-                        \end{array}\right]
-
-    These values can be verified by :func:`find_matrices_symbolic`.
-
-    :rtype: tuple
-    :returns: Pair of mass and stiffness matrices, :math:`2 \times 2`
-              :class:`numpy.ndarray`.
-    """
-    mass_mat = np.array([
-        [2, 1],
-        [1, 2],
-    ]) / 6.0
-    stiffness_mat = np.array([
-        [-1, -1],
-        [1, 1],
-    ]) / 2.0
-    return mass_mat, stiffness_mat
-
-
-def mass_and_stiffness_matrices_p2():
-    r"""Get mass and stiffness matrices for :math:`p = 2`.
-
-    These are for the interval :math:`\left[0, 1\right]`.
-
-    .. math::
-
-       M = \frac{1}{30} \left[ \begin{array}{c c c}
-                            4 &  2 & -1 \\
-                            2 & 16 &  2 \\
-                           -1 &  2 &  4
-                         \end{array}\right], \qquad
-       K = \frac{1}{6} \left[ \begin{array}{c c c}
-                          -3 & -4 &  1 \\
-                           4 &  0 & -4 \\
-                          -1 &  4 &  3
-                        \end{array}\right]
-
-    These values can be verified by :func:`find_matrices_symbolic`.
-
-    :rtype: tuple
-    :returns: Pair of mass and stiffness matrices, :math:`3 \times 3`
-              :class:`numpy.ndarray`.
-    """
-    mass_mat = np.array([
-        [4, 2, -1],
-        [2, 16, 2],
-        [-1, 2, 4],
-    ]) / 30.0
-    stiffness_mat = np.array([
-        [-3, -4, 1],
-        [4, 0, -4],
-        [-1, 4, 3],
-    ]) / 6.0
-    return mass_mat, stiffness_mat
-
-
-def mass_and_stiffness_matrices_p3():
-    r"""Get mass and stiffness matrices for :math:`p = 3`.
-
-    These are for the interval :math:`\left[0, 1\right]`.
-
-    .. math::
-
-       M = \frac{1}{1680} \left[ \begin{array}{c c c c}
-                              128 &   99 &  -36 &   19 \\
-                               99 &  648 &  -81 &  -36 \\
-                              -36 &  -81 &  648 &   99 \\
-                               19 &  -36 &   99 &  128
-                           \end{array}\right], \qquad
-       K = \frac{1}{80} \left[ \begin{array}{c c c c}
-                            -40 &  -57 &   24 &   -7 \\
-                             57 &    0 &  -81 &   24 \\
-                            -24 &   81 &    0 &  -57 \\
-                              7 &  -24 &   57 &   40
-                         \end{array}\right]
-
-    These values can be verified by :func:`find_matrices_symbolic`.
-
-    :rtype: tuple
-    :returns: Pair of mass and stiffness matrices, :math:`4 \times 4`
-              :class:`numpy.ndarray`.
-    """
-    mass_mat = np.array([
-        [128, 99, -36, 19],
-        [99, 648, -81, -36],
-        [-36, -81, 648, 99],
-        [19, -36, 99, 128],
-    ]) / 1680.0
-    stiffness_mat = np.array([
-        [-40, -57, 24, -7],
-        [57, 0, -81, 24],
-        [-24, 81, 0, -57],
-        [7, -24, 57, 40],
-    ]) / 80.0
     return mass_mat, stiffness_mat
 
 
