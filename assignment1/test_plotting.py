@@ -162,13 +162,13 @@ class TestPolynomialInterpolate(unittest.TestCase):
         self.assertTrue(np.all(result == expected_result))
 
 
-class Test__plot_solution(unittest.TestCase):
+class Test_plot_solution(unittest.TestCase):
 
     @staticmethod
     def _call_func_under_test(color, num_cols, interp_func,
                               solver, ax):
-        from assignment1.plotting import _plot_solution
-        return _plot_solution(color, num_cols, interp_func, solver, ax)
+        from assignment1.plotting import plot_solution
+        return plot_solution(color, num_cols, interp_func, solver, ax)
 
     def test_it(self):
         import sympy
@@ -316,7 +316,7 @@ class TestDG1Animate(unittest.TestCase):
     @mock.patch('assignment1.plotting.PolynomialInterpolate.from_solver',
                 return_value=object())
     @mock.patch('assignment1.plotting._configure_axis')
-    @mock.patch('assignment1.plotting._plot_solution')
+    @mock.patch('assignment1.plotting.plot_solution')
     def test_init_func(self, plot_soln, config_ax, interp_factory):
         import numpy as np
 

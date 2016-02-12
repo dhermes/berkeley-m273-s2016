@@ -142,7 +142,7 @@ class PolynomialInterpolate(object):
         return self.lagrange_matrix.dot(y_vals)
 
 
-def _plot_solution(color, num_cols, interp_func, solver, ax):
+def plot_solution(color, num_cols, interp_func, solver, ax):
     """Plot the solution and return the newly created lines.
 
     Helper for :class:`DG1Animate`.
@@ -273,10 +273,10 @@ class DG1Animate(object):
                         y_min=y_min, y_max=y_max)
         # Plot the initial data (in red) to compare against.
         _, num_cols = self.solver.node_points.shape
-        _plot_solution('red', num_cols, self.poly_interp_func,
-                       self.solver, self.ax)
+        plot_solution('red', num_cols, self.poly_interp_func,
+                      self.solver, self.ax)
         # Plot the same data (in blue) and store the lines.
-        self.plot_lines = _plot_solution(
+        self.plot_lines = plot_solution(
             'blue', num_cols, self.poly_interp_func, self.solver, self.ax)
         # For ``init_func`` with ``blit`` turned on, the initial
         # frame should not have visible lines. See
