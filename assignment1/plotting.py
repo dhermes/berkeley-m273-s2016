@@ -381,9 +381,9 @@ def plot_convergence(p_order, interval_sizes, colors, solver_factory,
         while solver.current_step != solver.num_steps:
             solver.update()
 
-        frob_err = np.linalg.norm(init_soln - solver.solution, ord='fro')
+        abs_err = np.max(np.abs(init_soln - solver.solution))
         log2_h.append(np.log2(interval_width / num_intervals))
-        log2_errs.append(np.log2(frob_err))
+        log2_errs.append(np.log2(abs_err))
         interp_func = PolynomialInterpolate.from_solver(solver)
         plotted_lines = plot_solution(color, num_intervals,
                                       interp_func, solver, ax2)
