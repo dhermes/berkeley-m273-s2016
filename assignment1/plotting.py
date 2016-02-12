@@ -323,7 +323,7 @@ class DG1Animate(object):
 def plot_convergence(p_order, interval_sizes, colors, solver_factory,
                      interval_width=1.0, total_time=1.0,
                      points_on_ref_int=None):  # pragma: NO COVER
-    r"""Plots a convergence plot for a given order.
+    r"""Plot a convergence plot for a given order.
 
     Creates a side-by-side of error plots and the solutions as the mesh
     is refined.

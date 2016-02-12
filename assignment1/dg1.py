@@ -25,11 +25,16 @@ import sympy
 _RK_STEPS = (4, 3, 2, 1)
 
 
-def get_symbolic_vandermonde(p_order):
-    """Get symbolic Vandermonde matrix of evenly spaced points.
+def get_symbolic_vandermonde(p_order, x_vals=None):
+    r"""Get symbolic Vandermonde matrix of evenly spaced points.
 
     :type p_order: int
     :param p_order: The degree of precision for the method.
+
+    :type x_vals: list
+    :param x_vals: (Optional) The list of :math:`x`-values to use. If not
+                   given, defaults to ``p_order + 1`` evenly spaced points
+                   on :math:`\left[0, 1\right]`.
 
     :rtype: tuple
     :returns: Pair of vector of powers of :math:`x` and Vandermonde matrix.
@@ -39,7 +44,8 @@ def get_symbolic_vandermonde(p_order):
               the Vandermonde matrix is square of dimension ``p_order + 1``.
     """
     x_symb = sympy.Symbol('x')
-    x_vals = sympy.Matrix(six.moves.xrange(p_order + 1)) / p_order
+    if x_vals is None:
+        x_vals = sympy.Matrix(six.moves.xrange(p_order + 1)) / p_order
     vand_mat = sympy.zeros(p_order + 1, p_order + 1)
     x_vec = sympy.zeros(1, p_order + 1)
     for i in six.moves.xrange(p_order + 1):
@@ -49,7 +55,8 @@ def get_symbolic_vandermonde(p_order):
     return x_vec, vand_mat
 
 
-def find_matrices_symbolic(p_order):
+# pylint: disable=too-many-locals
+def find_matrices_symbolic(p_order, start=0, stop=1, x_vals=None):
     r"""Find mass and stiffness matrices using symbolic algebra.
 
     We do this on the reference interval :math:`\left[0, 1\right]`
@@ -170,15 +177,29 @@ def find_matrices_symbolic(p_order):
     :type p_order: int
     :param p_order: The degree of precision for the method.
 
+    :type start: :class:`sympy.core.expr.Expr`
+    :param start: (Optional) The beginning of the interval.
+                  Defaults to 0.
+
+    :type stop: :class:`sympy.core.expr.Expr`
+    :param stop: (Optional) The end of the interval. Defaults to 1.
+
+    :type x_vals: list
+    :param x_vals: (Optional) The list of :math:`x`-values to use. If not
+                   given, defaults to ``p_order + 1`` evenly spaced points
+                   on :math:`\left[0, 1\right]`.
+
     :rtype: tuple
     :returns: Pair of mass and stiffness matrices, square
               :class:`sympy.Matrix <sympy.matrices.dense.MutableDenseMatrix>`
               with rows/columns equal to ``p_order + 1``.
     """
     x_symb = sympy.Symbol('x')
-    x_vec, vand_mat = get_symbolic_vandermonde(p_order)
+    x_vec, vand_mat = get_symbolic_vandermonde(p_order, x_vals=x_vals)
     coeff_mat = vand_mat**(-1)
     phi_funcs = x_vec * coeff_mat
+    phi_funcs = phi_funcs.expand()
+    phi_funcs.simplify()
 
     mass_mat = sympy.zeros(p_order + 1, p_order + 1)
     stiffness_mat = sympy.zeros(p_order + 1, p_order + 1)
@@ -189,15 +210,16 @@ def find_matrices_symbolic(p_order):
             phi_j = phi_funcs[j]
             integral_m = sympy.integrate(phi_i * phi_j, x_symb)
             integral_k = sympy.integrate(phi_i_prime * phi_j, x_symb)
-            mass_mat[i, j] = (integral_m.subs({x_symb: 1}) -
-                              integral_m.subs({x_symb: 0}))
-            stiffness_mat[i, j] = (integral_k.subs({x_symb: 1}) -
-                                   integral_k.subs({x_symb: 0}))
+            mass_mat[i, j] = (integral_m.subs({x_symb: stop}) -
+                              integral_m.subs({x_symb: start}))
+            stiffness_mat[i, j] = (integral_k.subs({x_symb: stop}) -
+                                   integral_k.subs({x_symb: start}))
             if j > i:
                 mass_mat[j, i] = mass_mat[i, j]
                 stiffness_mat[j, i] = -stiffness_mat[i, j]
 
     return mass_mat, stiffness_mat
+# pylint: enable=too-many-locals
 
 
 def gauss_lobatto_points(start, stop, num_points):
