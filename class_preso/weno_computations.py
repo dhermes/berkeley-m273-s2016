@@ -3,7 +3,6 @@
 
 from __future__ import print_function
 
-import matplotlib.pyplot as plt
 import six
 import sympy
 
@@ -74,7 +73,8 @@ def interp_three_points():
     one_half = sympy.Rational(1, 2)
     # Intentionally use values which are simple to replace and
     # ordered lexicographically.
-    u_minus2, u_minus1, u0, u1, u2 = sympy.symbols('A, B, C, D, E')
+    u_minus2, u_minus1, u_zero, u_plus1, u_plus2 = sympy.symbols(
+        'A, B, C, D, E')
     replace_dict = {
         'A': 'u_{j-2}',
         'B': 'u_{j-1}',
@@ -83,18 +83,18 @@ def interp_three_points():
         'E': 'u_{j+2}',
     }
     # Approximate with [-2, -1, 0].
-    p2_minus2 = poly_interp([u_minus2, u_minus1, u0], -2)
+    p2_minus2 = poly_interp([u_minus2, u_minus1, u_zero], -2)
     approx_minus2 = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}^{(1)}'),
                                    p2_minus2.subs({X_SYMB: one_half}))
     approx_minus2 = to_latex(approx_minus2, replace_dict)
     # Approximate with [-1, 0, 1].
-    p2_minus1 = poly_interp([u_minus1, u0, u1], -1)
+    p2_minus1 = poly_interp([u_minus1, u_zero, u_plus1], -1)
     approx_minus1 = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}^{(2)}'),
                                    p2_minus1.subs({X_SYMB: one_half}))
     approx_minus1 = to_latex(approx_minus1, replace_dict)
     # Approximate with [0, 1, 2].
-    p2_0 = poly_interp([u0, u1, u2], 0)
-    approx_0 = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}^{(3)}'),
-                              p2_0.subs({X_SYMB: one_half}))
-    approx_0 = to_latex(approx_0, replace_dict)
-    return approx_minus2, approx_minus1, approx_0
+    p2_zero = poly_interp([u_zero, u_plus1, u_plus2], 0)
+    approx_zero = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}^{(3)}'),
+                                 p2_zero.subs({X_SYMB: one_half}))
+    approx_zero = to_latex(approx_zero, replace_dict)
+    return approx_minus2, approx_minus1, approx_zero
