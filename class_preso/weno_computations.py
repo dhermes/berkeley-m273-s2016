@@ -31,15 +31,22 @@ def to_latex(value, replace_dict):
     return result
 
 
-def interp_three_points():
-    r"""Return interpolated values for :math:`x_{j+1/2}` using three points.
+def interp_simple_stencils():
+    r"""Return interpolated values for :math:`x_{j+1/2}` using simple stencils.
 
-    Uses three sets of interpolating points, :math:`x_{j-2}, x_{j-1}, x_j`,
-    :math:`x_{j-1}, x_j, x_{j+1}` and :math:`x_{j}, x_{j+1}, x_{j+2}`.
+    First uses three sets of interpolating points,
+    :math:`\left\{x_{j-2}, x_{j-1}, x_j\right\}`,
+    :math:`\left\{x_{j-1}, x_j, x_{j+1}\right\}` and
+    :math:`\left\{x_{j}, x_{j+1}, x_{j+2}\right}`
+    to give local order three approximations.
+
+    Then uses all five points to
+    :math:`\left\{x_{j-2}, x_{j-1}, x_j, x_{j+1}, x_{j+2}\right\}` to give
+    an order five approximation on the whole stencil.
 
     :rtype: tuple
-    :returns: Triple of LaTeX strings, one for each set of
-              interpolating points.
+    :returns: Quadraple of LaTeX strings, one for each set of
+              interpolating points, in the order described above.
     """
     one_half = sympy.Rational(1, 2)
     # Intentionally use values which are simple to replace and
@@ -74,4 +81,11 @@ def interp_three_points():
     approx_zero = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}^{(3)}'),
                                  approx_zero)
     approx_zero = to_latex(approx_zero, replace_dict)
-    return approx_minus2, approx_minus1, approx_zero
+    # Approximate with [0, 1, 2].
+    approx_all = sympy.interpolating_poly(
+        5, one_half, X=[-2, -1, 0, 1, 2],
+        Y=[u_minus2, u_minus1, u_zero, u_plus1, u_plus2])
+    approx_all = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}'),
+                                approx_all)
+    approx_all = to_latex(approx_all, replace_dict)
+    return approx_minus2, approx_minus1, approx_zero, approx_all
