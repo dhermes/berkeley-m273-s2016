@@ -321,7 +321,7 @@ def make_intro_plots(stopping_point=None):
 # pylint: enable=too-many-statements
 
 
-def discontinuity_to_volume(stopping_point=None):
+def discontinuity_to_volume():
     """Make plots similar to introductory, but with a discontinuity."""
     colors = seaborn.color_palette('husl')[:2]
     fontsize = 16
@@ -338,8 +338,6 @@ def discontinuity_to_volume(stopping_point=None):
     ax1.fill_between(np.linspace(0, 2.5, num_pts), np.ones(num_pts),
                      color=colors[0], alpha=0.5)
     ax1.set_title('$u(x)$', fontsize=fontsize)
-    if stopping_point == 0:
-        return
 
     # Set cell average u(x).
     for begin, val in zip([-2.5, -1.5, -0.5, 0.5, 1.5],
@@ -442,7 +440,7 @@ def make_shock_plot():
     bottom_right.text(1, 1.5, label4, fontsize=fontsize)
 
 
-def discontinuity_to_volume_single_cell():
+def discontinuity_to_volume_single_cell(stopping_point=None):
     colors = seaborn.color_palette('husl')[:2]
     fontsize = 16
     num_pts = 100
@@ -458,6 +456,8 @@ def discontinuity_to_volume_single_cell():
     ax1.fill_between(np.linspace(-2, 2.5, num_pts), np.ones(num_pts),
                      color=colors[0], alpha=0.5)
     ax1.set_title('$u(x)$', fontsize=fontsize)
+    if stopping_point == 0:
+        return
 
     # Set cell average u(x).
     for begin, val in zip([-2.5, -1.5, -0.5, 0.5, 1.5],
