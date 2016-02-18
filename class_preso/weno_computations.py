@@ -42,12 +42,17 @@ def to_latex(value, replace_dict):
 
 
 def interp_simple_stencils():
-    r"""Return interpolated values for :math:`x_{j+1/2}` using simple stencils.
+    r"""Return interpolated values for :math:`u_{j+1/2}` using simple stencils.
 
-    First uses three sets of interpolating points,
-    :math:`\left\{x_{j-2}, x_{j-1}, x_j\right\}`,
-    :math:`\left\{x_{j-1}, x_j, x_{j+1}\right\}` and
-    :math:`\left\{x_{j}, x_{j+1}, x_{j+2}\right\}`
+    First uses three sets of interpolating values,
+
+    .. math::
+
+        \left\{\overline{u}_{j-2}, \overline{u}_{j-1}, \overline{u}_j\right\},
+        \left\{\overline{u}_{j-1}, \overline{u}_{j},
+            \overline{u}_{j+1}\right\},
+        \left\{\overline{u}_{j}, \overline{u}_{j+1}, \overline{u}_{j+2}\right\},
+
     to give local order three approximations.
 
     Then uses all five points
@@ -61,40 +66,84 @@ def interp_simple_stencils():
     one_half = sympy.Rational(1, 2)
     # Intentionally use values which are simple to replace and
     # ordered lexicographically.
+    x_symb = sympy.Symbol('X')
     u_minus2, u_minus1, u_zero, u_plus1, u_plus2 = sympy.symbols(
         'A, B, C, D, E')
     replace_dict = {
-        'A': 'u_{j-2}',
-        'B': 'u_{j-1}',
-        'C': 'u_{j}',
-        'D': 'u_{j+1}',
-        'E': 'u_{j+2}',
+        'A': r'\overline{u}_{j-2}',
+        'B': r'\overline{u}_{j-1}',
+        'C': r'\overline{u}_{j}',
+        'D': r'\overline{u}_{j+1}',
+        'E': r'\overline{u}_{j+2}',
     }
+
     # Approximate with [-2, -1, 0].
-    approx_minus2 = sympy.interpolating_poly(
-        3, one_half, X=[-2, -1, 0],
-        Y=[u_minus2, u_minus1, u_zero])
+    x_vals = [-3 + one_half, -2 + one_half, -1 + one_half, one_half]
+    y_vals = [
+        0,
+        u_minus2,
+        u_minus2 + u_minus1,
+        u_minus2 + u_minus1 + u_zero,
+    ]
+    anti_derivative_minus2 = sympy.interpolating_poly(
+        4, x_symb, X=x_vals, Y=y_vals)
+    # Evaluate derivative at one-half.
+    approx_minus2 = anti_derivative_minus2.diff(x_symb).subs(
+        {x_symb: one_half})
     approx_minus2 = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}^{(1)}'),
                                    approx_minus2)
     approx_minus2 = to_latex(approx_minus2, replace_dict)
+
     # Approximate with [-1, 0, 1].
-    approx_minus1 = sympy.interpolating_poly(
-        3, one_half, X=[-1, 0, 1],
-        Y=[u_minus1, u_zero, u_plus1])
+    x_vals = [-2 + one_half, -1 + one_half, one_half, 1 + one_half]
+    y_vals = [
+        0,
+        u_minus1,
+        u_minus1 + u_zero,
+        u_minus1 + u_zero + u_plus1,
+    ]
+    anti_derivative_minus1 = sympy.interpolating_poly(
+        4, x_symb, X=x_vals, Y=y_vals)
+    # Evaluate derivative at one-half.
+    approx_minus1 = anti_derivative_minus1.diff(x_symb).subs(
+        {x_symb: one_half})
     approx_minus1 = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}^{(2)}'),
                                    approx_minus1)
     approx_minus1 = to_latex(approx_minus1, replace_dict)
+
     # Approximate with [0, 1, 2].
-    approx_zero = sympy.interpolating_poly(
-        3, one_half, X=[0, 1, 2],
-        Y=[u_zero, u_plus1, u_plus2])
+    x_vals = [-1 + one_half, one_half, 1 + one_half, 2 + one_half]
+    y_vals = [
+        0,
+        u_zero,
+        u_zero + u_plus1,
+        u_zero + u_plus1 + u_plus2,
+    ]
+    anti_derivative_zero = sympy.interpolating_poly(
+        4, x_symb, X=x_vals, Y=y_vals)
+    # Evaluate derivative at one-half.
+    approx_zero = anti_derivative_zero.diff(x_symb).subs(
+        {x_symb: one_half})
     approx_zero = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}^{(3)}'),
-                                 approx_zero)
+                                   approx_zero)
     approx_zero = to_latex(approx_zero, replace_dict)
-    # Approximate with [0, 1, 2].
-    approx_all = sympy.interpolating_poly(
-        5, one_half, X=[-2, -1, 0, 1, 2],
-        Y=[u_minus2, u_minus1, u_zero, u_plus1, u_plus2])
+
+    # Approximate with [-2, -1, 0, 1, 2].
+    x_vals = [-3 + one_half, -2 + one_half, -1 + one_half, one_half,
+              1 + one_half, 2 + one_half]
+    y_vals = [
+        0,
+        u_minus2,
+        u_minus2 + u_minus1,
+        u_minus2 + u_minus1 + u_zero,
+        u_minus2 + u_minus1 + u_zero + u_plus1,
+        u_minus2 + u_minus1 + u_zero + u_plus1 + u_plus2,
+    ]
+    anti_derivative_all = sympy.interpolating_poly(
+        6, x_symb, X=x_vals, Y=y_vals)
+    # Evaluate derivative at one-half.
+    approx_all = anti_derivative_all.diff(x_symb).subs(
+        {x_symb: one_half})
     approx_all = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}'),
                                 approx_all)
     approx_all = to_latex(approx_all, replace_dict)
@@ -253,7 +302,7 @@ def make_intro_plots(stopping_point=None):
               2920 * 0.5 + 2027) / 960.0
     bottom_right.plot([0.5], [y_val4], color=colors[3],
                       linestyle='None', marker='o')
-    label4_half = (r'$\frac{1}{30}\overline{u}{-2} - '
+    label4_half = (r'$\frac{1}{30}\overline{u}_{-2} - '
                    r'\frac{13}{60}\overline{u}_{-1} + '
                    r'\frac{47}{60}\overline{u}_{0} + '
                    r'\frac{9}{20}\overline{u}_{1} -'
