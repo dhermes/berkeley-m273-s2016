@@ -1,4 +1,11 @@
-"""Helper functions for ``weno_computations`` notebook."""
+"""Helper functions for ``weno_computations`` notebook.
+
+Slides can be seen on `nbviewer`_.
+
+.. _nbviewer: https://nbviewer.jupyter.org/format/slides/github/\
+              dhermes/berkeley-m273-s2016/blob/master/class_preso/\
+              weno_computations.ipynb
+"""
 
 
 from __future__ import print_function
@@ -94,11 +101,10 @@ def interp_simple_stencils():
     return approx_minus2, approx_minus1, approx_zero, approx_all
 
 
+# pylint: disable=too-many-locals,too-many-return-statements
+# pylint: disable=too-many-statements
 def make_intro_plots(stopping_point=None):
-    """Make introductory plots.
-
-    0, 3, 2, -1, 2
-    """
+    """Make introductory plots."""
     colors = seaborn.color_palette('husl')[:4]
     fontsize = 16
     num_pts = 100
@@ -252,3 +258,5 @@ def make_intro_plots(stopping_point=None):
                       linestyle='None', marker='o')
     bottom_right.plot([0.5], [y_val3], color=colors[2],
                       linestyle='None', marker='o')
+# pylint: enable=too-many-locals,too-many-return-statements
+# pylint: enable=too-many-statements

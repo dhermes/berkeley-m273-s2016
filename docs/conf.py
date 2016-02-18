@@ -33,6 +33,7 @@ MOCK_MODULES = (
     'numpy.polynomial',
     'numpy.polynomial.legendre',
     'numpy.polynomial.polynomial',
+    'seaborn',
     'sympy',
 )
 
@@ -132,11 +133,11 @@ todo_include_todos = False
 
 # -- Options for HTML output ----------------------------------------------
 
+# We fake our imports when readthedocs.org is building the docs.
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
 # We want to set the RTD theme, but not if we're on RTD.
-if os.environ.get('READTHEDOCS', None) == 'True':
-    # We fake our imports when readthedocs.org is building the docs.
-    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-else:
+if os.environ.get('READTHEDOCS', None) != 'True':
     # Use the RTD theme when not building on read the docs.
     import sphinx_rtd_theme
     html_theme = 'sphinx_rtd_theme'
