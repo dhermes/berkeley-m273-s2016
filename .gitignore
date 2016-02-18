@@ -31,8 +31,9 @@ scripts/pylintrc_reduced
 # Built documentation
 docs/_build
 
-# IPython/Jupyter Notebook Checkpoints
+# IPython/Jupyter Notebook Checkpoints and Generated Files
 .ipynb_checkpoints/
+class_preso/weno_computations.slides.html
 
 # OS X system file(s)
 .DS_Store
