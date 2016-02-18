@@ -147,7 +147,8 @@ def make_intro_plots(stopping_point=None):
     top_left.text(-3, -3, label1, fontsize=fontsize)
     x_vals = np.linspace(-2.5, 0.5, num_pts)
     y_vals = (-12 * x_vals**2 - 18 * x_vals + 13) / 6.0
-    top_left.plot(x_vals, y_vals, color=colors[0])
+    top_left.fill_between(x_vals, 0, y_vals,
+                          color=colors[0], alpha=0.5)
     if stopping_point == 1:
         return
     # Do a little bit extra: a dot at 0.5.
@@ -176,7 +177,8 @@ def make_intro_plots(stopping_point=None):
         return
     x_vals = np.linspace(-1.5, 1.5, num_pts)
     y_vals = (-12 * x_vals**2 - 24 * x_vals + 25) / 12.0
-    top_right.plot(x_vals, y_vals, color=colors[1])
+    top_right.fill_between(x_vals, 0, y_vals,
+                           color=colors[1], alpha=0.5)
     if stopping_point == 4:
         return
     # Do a little bit extra: a dot at 0.5.
@@ -205,7 +207,8 @@ def make_intro_plots(stopping_point=None):
         return
     x_vals = np.linspace(-0.5, 2.5, num_pts)
     y_vals = (12 * x_vals**2 - 24 * x_vals + 7) / 4.0
-    bottom_left.plot(x_vals, y_vals, color=colors[2])
+    bottom_left.fill_between(x_vals, y_vals,
+                             color=colors[2], alpha=0.5)
     if stopping_point == 7:
         return
     # Do a little bit extra: a dot at 0.5.
@@ -238,10 +241,11 @@ def make_intro_plots(stopping_point=None):
                       color='black', linestyle='dashed')
     if stopping_point == 9:
         return
-    x_vals = np.linspace(-2, 2, num_pts)
+    x_vals = np.linspace(-2.5, 2.5, num_pts)
     y_vals = (240 * x_vals**4 + 800 * x_vals**3 - 1320 * x_vals**2 -
               2920 * x_vals + 2027) / 960.0
-    bottom_right.plot(x_vals, y_vals, color=colors[3])
+    bottom_right.fill_between(x_vals, y_vals,
+                              color=colors[3], alpha=0.5)
     if stopping_point == 10:
         return
     # Do a little bit extra: a dot at 0.5.
