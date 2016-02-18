@@ -160,7 +160,7 @@ def make_intro_plots(stopping_point=None):
     .. math::
 
         \overline{u}_{-2} = 0,
-        \overline{u}_{-1} = 2,
+        \overline{u}_{-1} = 3,
         \overline{u}_{0} = 2,
         \overline{u}_{1} = -1,
         \overline{u}_{2} = 2
@@ -440,3 +440,121 @@ def make_shock_plot():
                               color=colors[3], alpha=0.5)
     label4 = r'$\frac{4x^3 - 29x + 72}{48}$'
     bottom_right.text(1, 1.5, label4, fontsize=fontsize)
+
+
+def discontinuity_to_volume_single_cell():
+    colors = seaborn.color_palette('husl')[:2]
+    fontsize = 16
+    num_pts = 100
+    rows, cols = 1, 2
+    fig, (ax1, ax2) = plt.subplots(rows, cols, sharex=True, sharey=True)
+    fig.set_size_inches(15, 8)
+    ax1.set_xlim(-3, 3)
+    ax1.set_ylim(-0.25, 2.25)
+
+    # Set u(x).
+    ax1.fill_between(np.linspace(-2.5, -2, num_pts), 2 * np.ones(num_pts),
+                     color=colors[0], alpha=0.5)
+    ax1.fill_between(np.linspace(-2, 2.5, num_pts), np.ones(num_pts),
+                     color=colors[0], alpha=0.5)
+    ax1.set_title('$u(x)$', fontsize=fontsize)
+
+    # Set cell average u(x).
+    for begin, val in zip([-2.5, -1.5, -0.5, 0.5, 1.5],
+                          [1.5, 1, 1, 1, 1]):
+        ax2.plot(np.linspace(begin, begin + 1, num_pts),
+                 val * np.ones(num_pts),
+                 color=colors[1], linestyle='dashed')
+        ax2.plot([begin, begin + 1], [val, val],
+                 color=colors[1], marker='o', linestyle='None')
+    ax2.set_title(r'$\overline{u}(x)$', fontsize=fontsize)
+
+
+def make_shock_plot_single_cell():
+    colors = seaborn.color_palette('husl')[:4]
+    fontsize = 20
+    num_pts = 100
+    rows = cols = 2
+    fig, ax_vals = plt.subplots(rows, cols, sharex=True, sharey=True)
+    fig.set_size_inches(15, 8)
+    ax_vals[0, 0].set_xlim(-3, 3)
+    ax_vals[0, 0].set_ylim(-0.5, 2.5)
+
+    # Top left plot (-2, -1, and 0)
+    top_left = ax_vals[0, 0]
+    top_left.plot(np.linspace(-2.5, -1.5, num_pts),
+                  1.5 * np.ones(num_pts),
+                  color='black', linestyle='dashed')
+    top_left.plot(np.linspace(-1.5, -0.5, num_pts),
+                  1 * np.ones(num_pts),
+                  color='black', linestyle='dashed')
+    top_left.plot(np.linspace(-0.5, 0.5, num_pts),
+                  1 * np.ones(num_pts),
+                  color='black', linestyle='dashed')
+    x_vals = np.linspace(-2.5, 0.5, num_pts)
+    y_vals = x_vals**2 / 4 + x_vals / 4 + 47.0 / 48
+    top_left.fill_between(x_vals, 0, y_vals,
+                          color=colors[0], alpha=0.5)
+    label1 = r'$\frac{12x^2 + 12x + 47}{48}$'
+    top_left.text(1, 1.5, label1, fontsize=fontsize)
+
+    # Top right plot (-1, 0, and 1)
+    top_right = ax_vals[0, 1]
+    top_right.plot(np.linspace(-1.5, -0.5, num_pts),
+                   1 * np.ones(num_pts),
+                   color='black', linestyle='dashed')
+    top_right.plot(np.linspace(-0.5, 0.5, num_pts),
+                   1 * np.ones(num_pts),
+                   color='black', linestyle='dashed')
+    top_right.plot(np.linspace(0.5, 1.5, num_pts),
+                   1 * np.ones(num_pts),
+                   color='black', linestyle='dashed')
+    x_vals = np.linspace(-1.5, 1.5, num_pts)
+    y_vals = np.ones(num_pts)
+    top_right.fill_between(x_vals, 0, y_vals,
+                           color=colors[1], alpha=0.5)
+    label2 = r'$1$'
+    top_right.text(1, 1.5, label2, fontsize=fontsize)
+
+    # Bottom left plot (0, 1, 2)
+    bottom_left = ax_vals[1, 0]
+    bottom_left.plot(np.linspace(-0.5, 0.5, num_pts),
+                     1 * np.ones(num_pts),
+                     color='black', linestyle='dashed')
+    bottom_left.plot(np.linspace(0.5, 1.5, num_pts),
+                     1 * np.ones(num_pts),
+                     color='black', linestyle='dashed')
+    bottom_left.plot(np.linspace(1.5, 2.5, num_pts),
+                     1 * np.ones(num_pts),
+                     color='black', linestyle='dashed')
+    x_vals = np.linspace(-0.5, 2.5, num_pts)
+    y_vals = np.ones(num_pts)
+    bottom_left.fill_between(x_vals, y_vals,
+                             color=colors[2], alpha=0.5)
+    label3 = r'$1$'
+    bottom_left.text(1, 1.5, label3, fontsize=fontsize)
+
+    # Bottom right plot (-2, -1, 0, 1 and 2)
+    bottom_right = ax_vals[1, 1]
+    bottom_right.plot(np.linspace(-2.5, -1.5, num_pts),
+                      1.5 * np.ones(num_pts),
+                      color='black', linestyle='dashed')
+    bottom_right.plot(np.linspace(-1.5, -0.5, num_pts),
+                      1 * np.ones(num_pts),
+                      color='black', linestyle='dashed')
+    bottom_right.plot(np.linspace(-0.5, 0.5, num_pts),
+                      1 * np.ones(num_pts),
+                      color='black', linestyle='dashed')
+    bottom_right.plot(np.linspace(0.5, 1.5, num_pts),
+                      1 * np.ones(num_pts),
+                      color='black', linestyle='dashed')
+    bottom_right.plot(np.linspace(1.5, 2.5, num_pts),
+                      1 * np.ones(num_pts),
+                      color='black', linestyle='dashed')
+    x_vals = np.linspace(-2.5, 2.5, num_pts)
+    y_vals = (x_vals**4 / 48 - x_vals**3 / 24 - x_vals**2 / 32 +
+              5 * x_vals / 96 + 1283.0 / 1280)
+    bottom_right.fill_between(x_vals, y_vals,
+                              color=colors[3], alpha=0.5)
+    label4 = r'$\frac{80x^4 - 160x^3 - 120x^2 + 200x + 3849}{3840}$'
+    bottom_right.text(-0.75, 1.5, label4, fontsize=fontsize)
