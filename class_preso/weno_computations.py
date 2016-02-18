@@ -104,7 +104,21 @@ def interp_simple_stencils():
 # pylint: disable=too-many-locals,too-many-return-statements
 # pylint: disable=too-many-statements
 def make_intro_plots(stopping_point=None):
-    """Make introductory plots."""
+    r"""Make introductory plots.
+
+    Uses
+
+    .. math::
+
+        \overline{u}_{-2} = 0,
+        \overline{u}_{-1} = 2,
+        \overline{u}_{0} = 2,
+        \overline{u}_{1} = -1,
+        \overline{u}_{2} = 2
+
+    And plots the interpolations by quadratics (on the three contiguous
+    subregions) and by a quartic that preserve the interval.
+    """
     colors = seaborn.color_palette('husl')[:4]
     fontsize = 16
     num_pts = 100
@@ -112,7 +126,7 @@ def make_intro_plots(stopping_point=None):
     fig, ax_vals = plt.subplots(rows, cols, sharex=True, sharey=True)
     fig.set_size_inches(15, 8)
     ax_vals[0, 0].set_xlim(-3, 3)
-    ax_vals[0, 0].set_ylim(-3, 4)
+    ax_vals[0, 0].set_ylim(-4, 6)
 
     # Top left plot (-2, -1, and 0)
     top_left = ax_vals[0, 0]
@@ -127,27 +141,23 @@ def make_intro_plots(stopping_point=None):
                   color='black', linestyle='dashed')
     if stopping_point == 0:
         return
-    label1 = (r'$u_{-2} \left(\frac{x^2 + x}{2}\right) +'
-              r'u_{-1} \left(-x^2 - 2x\right) + '
-              r'u_{0} \left(\frac{x^2 + 3x + 2}{2}\right)$')
-    top_left.text(-2.5, -2, label1, fontsize=fontsize)
-    x_vals = np.linspace(-2, 0, num_pts)
-    y_vals = -2 * x_vals**2 - 3 * x_vals + 2
+    label1 = (r'$\overline{u}_{-2} \left(\frac{12x^2 + 12x - 1}{24}\right) + '
+              r'\overline{u}_{-1} \left(\frac{-12x^2 - 24x + 1}{12}\right) + '
+              r'\overline{u}_{0} \left(\frac{12x^2 + 36x + 23}{24}\right)$')
+    top_left.text(-3, -3, label1, fontsize=fontsize)
+    x_vals = np.linspace(-2.5, 0.5, num_pts)
+    y_vals = (-12 * x_vals**2 - 18 * x_vals + 13) / 6.0
     top_left.plot(x_vals, y_vals, color=colors[0])
     if stopping_point == 1:
         return
-    # Do a little bit extra (a dashed line to 0.5 and then
-    # a dot at 0.5).
-    x_vals = np.linspace(0, 0.5, num_pts)
-    y_vals = -2 * x_vals**2 - 3 * x_vals + 2
-    top_left.plot(x_vals, y_vals, color=colors[0],
-                  linestyle='dashed')
-    y_val1 = y_vals[-1]
+    # Do a little bit extra: a dot at 0.5.
+    y_val1 = (-12 * 0.5**2 - 18 * 0.5 + 13) / 6.0
     top_left.plot([0.5], [y_val1], color=colors[0],
                   linestyle='None', marker='o')
-    label1_half = (r'$\frac{3}{8}u_{-2} - \frac{5}{4}u_{-1} + '
-                   r'\frac{15}{8}u_{0}$')
-    top_left.text(0.75, 1.9, label1_half, fontsize=fontsize)
+    label1_half = (r'$\frac{1}{3}\overline{u}_{-2} - '
+                   r'\frac{7}{6}\overline{u}_{-1} + '
+                   r'\frac{11}{6}\overline{u}_{0}$')
+    top_left.text(0.75, 2.5, label1_half, fontsize=fontsize)
     if stopping_point == 2:
         return
 
@@ -164,22 +174,19 @@ def make_intro_plots(stopping_point=None):
                    color='black', linestyle='dashed')
     if stopping_point == 3:
         return
-    label2 = (r'$u_{-1} \left(\frac{x^2 - x}{2}\right) +'
-              r'u_{0} \left(1 -x^2\right) + '
-              r'u_{1} \left(\frac{x^2 + x}{2}\right)$')
-    top_right.text(-2.5, -2, label2, fontsize=fontsize)
-    x_vals = np.linspace(-1, 1, num_pts)
-    y_vals = -x_vals**2 - 2 * x_vals + 2
+    x_vals = np.linspace(-1.5, 1.5, num_pts)
+    y_vals = (-12 * x_vals**2 - 24 * x_vals + 25) / 12.0
     top_right.plot(x_vals, y_vals, color=colors[1])
     if stopping_point == 4:
         return
     # Do a little bit extra: a dot at 0.5.
-    y_val2 = -0.5**2 - 2 * 0.5 + 2
+    y_val2 = (-12 * 0.5**2 - 24 * 0.5 + 25) / 12.0
     top_right.plot([0.5], [y_val2], color=colors[1],
                    linestyle='None', marker='o')
-    label2_half = (r'$-\frac{1}{8}u_{-1} + \frac{3}{4}u_{0} + '
-                   r'\frac{3}{8}u_{1}$')
-    top_right.text(0.75, 1.9, label2_half, fontsize=fontsize)
+    label2_half = (r'$-\frac{1}{6}\overline{u}_{-1} + '
+                   r'\frac{5}{6}\overline{u}_{0} + '
+                   r'\frac{1}{3}\overline{u}_{1}$')
+    top_right.text(0.75, 2.5, label2_half, fontsize=fontsize)
     if stopping_point == 5:
         return
 
@@ -196,21 +203,18 @@ def make_intro_plots(stopping_point=None):
                      color='black', linestyle='dashed')
     if stopping_point == 6:
         return
-    label3 = (r'$u_{0} \left(\frac{x^2 - 3x + 2}{2}\right) +'
-              r'u_{1} \left(-x^2 + 2x\right) + '
-              r'u_{2} \left(\frac{x^2 - x}{2}\right)$')
-    bottom_left.text(-2.5, -2, label3, fontsize=fontsize)
-    x_vals = np.linspace(0, 2, num_pts)
-    y_vals = 3 * x_vals**2 - 6 * x_vals + 2
+    x_vals = np.linspace(-0.5, 2.5, num_pts)
+    y_vals = (12 * x_vals**2 - 24 * x_vals + 7) / 4.0
     bottom_left.plot(x_vals, y_vals, color=colors[2])
     if stopping_point == 7:
         return
     # Do a little bit extra: a dot at 0.5.
-    y_val3 = 3 * 0.5**2 - 6 * 0.5 + 2
+    y_val3 = (12 * 0.5**2 - 24 * 0.5 + 7) / 4.0
     bottom_left.plot([0.5], [y_val3], color=colors[2],
                      linestyle='None', marker='o')
-    label3_half = (r'$\frac{3}{8}u_{-1} + \frac{3}{4}u_{0} - '
-                   r'\frac{1}{8}u_{1}$')
+    label3_half = (r'$\frac{1}{3}\overline{u}_{0} + '
+                   r'\frac{5}{6}\overline{u}_{1} - '
+                   r'\frac{1}{6}\overline{u}_{2}$')
     bottom_left.text(-2.5, 2.75, label3_half, fontsize=fontsize)
     if stopping_point == 8:
         return
@@ -235,20 +239,22 @@ def make_intro_plots(stopping_point=None):
     if stopping_point == 9:
         return
     x_vals = np.linspace(-2, 2, num_pts)
-    y_vals = (3 * x_vals**4 + 10 * x_vals**3 - 15 * x_vals**2 -
-              34 * x_vals + 24) / 12.0
+    y_vals = (240 * x_vals**4 + 800 * x_vals**3 - 1320 * x_vals**2 -
+              2920 * x_vals + 2027) / 960.0
     bottom_right.plot(x_vals, y_vals, color=colors[3])
     if stopping_point == 10:
         return
     # Do a little bit extra: a dot at 0.5.
-    y_val4 = (3 * 0.5**4 + 10 * 0.5**3 - 15 * 0.5**2 -
-              34 * 0.5 + 24) / 12.0
+    y_val4 = (240 * 0.5**4 + 800 * 0.5**3 - 1320 * 0.5**2 -
+              2920 * 0.5 + 2027) / 960.0
     bottom_right.plot([0.5], [y_val4], color=colors[3],
                       linestyle='None', marker='o')
-    label4_half = (r'$\frac{3}{128}u_{-2} - \frac{5}{32}u_{-1} + '
-                   r'\frac{45}{64}u_{0} + \frac{15}{32}u_{1} -'
-                   r'\frac{5}{128}u_{2}$')
-    bottom_right.text(-2.5, -2, label4_half, fontsize=fontsize)
+    label4_half = (r'$\frac{1}{30}\overline{u}{-2} - '
+                   r'\frac{13}{60}\overline{u}_{-1} + '
+                   r'\frac{47}{60}\overline{u}_{0} + '
+                   r'\frac{9}{20}\overline{u}_{1} -'
+                   r'\frac{1}{20}\overline{u}_{2}$')
+    bottom_right.text(-2.5, -3, label4_half, fontsize=fontsize)
     if stopping_point == 11:
         return
     # Do a little bit more: add all the other dots.
