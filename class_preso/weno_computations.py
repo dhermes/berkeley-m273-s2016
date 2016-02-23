@@ -41,6 +41,7 @@ def to_latex(value, replace_dict):
     return result
 
 
+# pylint: disable=too-many-locals
 def interp_simple_stencils():
     r"""Return interpolated values for :math:`u_{j+1/2}` using simple stencils.
 
@@ -49,9 +50,9 @@ def interp_simple_stencils():
     .. math::
 
         \left\{\overline{u}_{j-2}, \overline{u}_{j-1}, \overline{u}_j\right\},
-        \left\{\overline{u}_{j-1}, \overline{u}_{j},
+        \left\{\overline{u}_{j-1}, \overline{u}_j,
             \overline{u}_{j+1}\right\},
-        \left\{\overline{u}_{j}, \overline{u}_{j+1}, \overline{u}_{j+2}\right\},
+        \left\{\overline{u}_j, \overline{u}_{j+1}, \overline{u}_{j+2}\right\},
 
     to give local order three approximations.
 
@@ -125,7 +126,7 @@ def interp_simple_stencils():
     approx_zero = anti_derivative_zero.diff(x_symb).subs(
         {x_symb: one_half})
     approx_zero = sympy.Equality(sympy.Symbol(r'u_{j + \frac{1}{2}}^{(3)}'),
-                                   approx_zero)
+                                 approx_zero)
     approx_zero = to_latex(approx_zero, replace_dict)
 
     # Approximate with [-2, -1, 0, 1, 2].
@@ -148,6 +149,7 @@ def interp_simple_stencils():
                                 approx_all)
     approx_all = to_latex(approx_all, replace_dict)
     return approx_minus2, approx_minus1, approx_zero, approx_all
+# pylint: enable=too-many-locals
 
 
 # pylint: disable=too-many-locals,too-many-return-statements
@@ -350,6 +352,7 @@ def discontinuity_to_volume():
     ax2.set_title(r'$\overline{u}(x)$', fontsize=fontsize)
 
 
+# pylint: disable=too-many-locals
 def make_shock_plot():
     """Make plots similar to introductory, but with a discontinuity."""
     colors = seaborn.color_palette('husl')[:4]
@@ -438,9 +441,18 @@ def make_shock_plot():
                               color=colors[3], alpha=0.5)
     label4 = r'$\frac{4x^3 - 29x + 72}{48}$'
     bottom_right.text(1, 1.5, label4, fontsize=fontsize)
+# pylint: enable=too-many-locals
 
 
+# pylint: disable=invalid-name
 def discontinuity_to_volume_single_cell(stopping_point=None):
+    """Plot a piecewise constant function w/discontinuity towards the left.
+
+    :type stopping_point: int
+    :param stopping_point: (Optional) The transition point to stop at when
+                           creating the plot. By passing in 0, 1, 2, ...
+                           this allows us to create a short slide-show.
+    """
     colors = seaborn.color_palette('husl')[:2]
     fontsize = 16
     num_pts = 100
@@ -468,9 +480,12 @@ def discontinuity_to_volume_single_cell(stopping_point=None):
         ax2.plot([begin, begin + 1], [val, val],
                  color=colors[1], marker='o', linestyle='None')
     ax2.set_title(r'$\overline{u}(x)$', fontsize=fontsize)
+# pylint: enable=invalid-name
 
 
+# pylint: disable=too-many-locals
 def make_shock_plot_single_cell():
+    """Plot the reconstructed polynomials that occur near a shock."""
     colors = seaborn.color_palette('husl')[:4]
     fontsize = 20
     num_pts = 100
@@ -558,3 +573,4 @@ def make_shock_plot_single_cell():
                               color=colors[3], alpha=0.5)
     label4 = r'$\frac{80x^4 - 160x^3 - 120x^2 + 200x + 3849}{3840}$'
     bottom_right.text(-0.75, 1.5, label4, fontsize=fontsize)
+# pylint: enable=too-many-locals
