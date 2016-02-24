@@ -1,7 +1,5 @@
 import unittest
 
-import mock
-
 
 class Test_get_symbolic_vandermonde(unittest.TestCase):
 
