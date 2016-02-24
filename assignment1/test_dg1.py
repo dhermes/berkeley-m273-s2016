@@ -117,7 +117,7 @@ class Test_get_legendre_matrix(unittest.TestCase):
         points = np.linspace(0, 1, num_points)
         result = self._call_func_under_test(points)
         self.assertEqual(result.shape, (num_points, num_points))
-        self.assertTrue(result.flags.f_contiguous)
+        self.assertTrue(result.flags.c_contiguous)
         expected_result = np.zeros((num_points, num_points))
         for n in six.moves.xrange(num_points):
             leg_coeffs = [0] * n + [1]
@@ -139,7 +139,7 @@ class Test_get_legendre_matrix(unittest.TestCase):
         result = self._call_func_under_test(points,
                                             max_degree=max_degree)
         self.assertEqual(result.shape, (num_nodes, max_degree + 1))
-        self.assertTrue(result.flags.f_contiguous)
+        self.assertTrue(result.flags.c_contiguous)
         expected_result = np.zeros((num_nodes, max_degree + 1))
         for n in six.moves.xrange(max_degree + 1):
             leg_coeffs = [0] * n + [1]
@@ -318,7 +318,8 @@ class Test_get_evenly_spaced_points(unittest.TestCase):
         from assignment1.dg1 import get_evenly_spaced_points
         return get_evenly_spaced_points(start, stop, num_points)
 
-    @mock.patch('numpy.linspace', return_value=object())
+    @mock.patch('assignment1.dg1.MathProvider.linspace',
+                return_value=object())
     def test_shadows_np_linspace(self, linspace_mock):
         start = object()
         stop = object()

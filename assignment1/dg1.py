@@ -19,6 +19,26 @@ import six
 _RK_STEPS = (4, 3, 2, 1)
 
 
+# pylint: disable=too-few-public-methods
+class MathProvider(object):
+    """Class mutable settings for doing math.
+
+    By default uses ``NumPy`` but can be swapped out for other objects
+    which provide the same concepts, e.g. matrices which use higher
+    precision.
+    """
+    exp_func = staticmethod(np.exp)
+    legendre_roots = staticmethod(legendre.legroots)
+    linspace = staticmethod(np.linspace)
+    mat_inv = staticmethod(np.linalg.inv)
+    mat_mul = staticmethod(np.dot)
+    solve = staticmethod(np.linalg.solve)
+    sum = staticmethod(np.sum)
+    vector_roll = staticmethod(np.roll)
+    zeros = staticmethod(np.zeros)
+# pylint: enable=too-few-public-methods
+
+
 def gauss_lobatto_points(start, stop, num_points):
     r"""Get the node points for Gauss-Lobatto quadrature.
 
@@ -54,8 +74,15 @@ def gauss_lobatto_points(start, stop, num_points):
     :rtype: :class:`numpy.ndarray`
     :returns: 1D array, the interior quadrature nodes.
     """
-    p_n_minus1 = [0] * (num_points - 1) + [1]
-    inner_nodes = legendre.legroots(legendre.legder(p_n_minus1))
+    # NOTE: We utilize the fact that
+    #       d/dx (P_{2n})   = 3 P_1 + 7 P_3 + ... + (4n - 1) P_{2n - 1}
+    #       d/dx (P_{2n+1}) = 1 P_0 + 5 P_2 + ... + (4n - 1) P_{2n}
+    leg_prime = MathProvider.zeros(num_points - 1)
+    if num_points % 2 == 1:
+        leg_prime[1::2] = six.moves.range(3, 2 * num_points - 2, 4)
+    else:
+        leg_prime[::2] = six.moves.xrange(1, 2 * num_points - 2, 4)
+    inner_nodes = MathProvider.legendre_roots(leg_prime)
     # Utilize symmetry about 0.
     inner_nodes = 0.5 * (inner_nodes - inner_nodes[::-1])
     if start != -1.0 or stop != 1.0:
@@ -101,8 +128,9 @@ def get_legendre_matrix(points, max_degree=None):
     num_points, = points.shape
     if max_degree is None:
         max_degree = num_points - 1
-    # Use Fortran order since we operator on columns.
-    result = np.zeros((num_points, max_degree + 1), order='F')
+    # NOTE: As a numpy optimization, one might use Fortran order since the
+    #       algorithm below operates on columns.
+    result = MathProvider.zeros((num_points, max_degree + 1))
     result[:, 0] = 1.0
     result[:, 1] = points
     for degree in six.moves.xrange(2, max_degree + 1):
@@ -134,7 +162,7 @@ def _find_matrices_helper(vals1, vals2):
     """
     result = 0
     for i, val in enumerate(vals1):
-        result += val * np.sum(vals2[i + 1::2])
+        result += val * MathProvider.sum(vals2[i + 1::2])
     return result
 
 
@@ -156,7 +184,7 @@ def get_evenly_spaced_points(start, stop, num_points):
     :rtype: :class:`numpy.ndarray`
     :returns: The evenly spaced points on the interval.
     """
-    return np.linspace(start, stop, num_points)
+    return MathProvider.linspace(start, stop, num_points)
 
 
 def find_matrices(p_order, points_on_ref_int=None):
@@ -276,16 +304,18 @@ def find_matrices(p_order, points_on_ref_int=None):
         points_on_ref_int = get_evenly_spaced_points
     # Find the coefficients of the L_n(x) for each basis function.
     x_vals = points_on_ref_int(-1, 1, p_order + 1)
-    coeff_mat = np.linalg.inv(get_legendre_matrix(x_vals))
+    coeff_mat = MathProvider.mat_inv(get_legendre_matrix(x_vals))
 
     # Populate the mass and stiffness matrices.
-    legendre_norms = 2.0 / np.arange(1, 2 * p_order + 2, 2)
-    mass_mat = np.zeros((p_order + 1, p_order + 1))
-    stiffness_mat = np.zeros((p_order + 1, p_order + 1))
+    # NOTE: We could speed this up by using 2.0 / np.arange(...).
+    legendre_norms = [
+        2.0 / val for val in six.moves.xrange(1, 2 * p_order + 2, 2)]
+    mass_mat = MathProvider.zeros((p_order + 1, p_order + 1))
+    stiffness_mat = MathProvider.zeros((p_order + 1, p_order + 1))
     for i in six.moves.xrange(p_order + 1):
         mass_mat_base = legendre_norms * coeff_mat[:, i]
         for j in six.moves.xrange(i, p_order + 1):
-            mass_mat[i, j] = np.sum(mass_mat_base * coeff_mat[:, j])
+            mass_mat[i, j] = MathProvider.sum(mass_mat_base * coeff_mat[:, j])
             stiffness_mat[i, j] = 2.0 * _find_matrices_helper(
                 coeff_mat[:, j], coeff_mat[:, i])
             if j > i:
@@ -390,13 +420,18 @@ def get_node_points(num_points, p_order, step_size=None,
         step_size = 1.0 / num_points
     if points_on_ref_int is None:
         points_on_ref_int = get_evenly_spaced_points
-    interval_starts = np.linspace(0, 1 - step_size, num_points)
+    interval_starts = MathProvider.linspace(0, 1 - step_size, num_points)
     # Split the first interval [0, h] in ``p_order + 1`` points.
     first_interval = points_on_ref_int(0, step_size, p_order + 1)
-    # Broadcast the values with ``first_interval`` as rows and
-    # columns as ``interval_starts``.
-    return (first_interval[:, np.newaxis] +
-            interval_starts[np.newaxis, :])
+    # NOTE: We could make this more efficient by using numpy broadcasting
+    #       with ``first_interval`` as rows and columns as
+    #       ``interval_starts``.
+    result = MathProvider.zeros((p_order + 1, num_points))
+    for row in six.moves.xrange(p_order + 1):
+        left_val = first_interval[row]
+        for col in six.moves.xrange(num_points):
+            result[row, col] = left_val + interval_starts[col]
+    return result
 
 
 def get_gaussian_like_initial_data(node_points):
@@ -415,7 +450,7 @@ def get_gaussian_like_initial_data(node_points):
     :rtype: :class:`numpy.ndarray`
     :returns: The :math:`u`-values at each node point.
     """
-    return np.exp(-(node_points - 0.5)**2 / 0.01)
+    return MathProvider.exp_func(-(node_points - 0.5)**2 / 0.01)
 
 
 class DG1Solver(object):
@@ -486,7 +521,7 @@ class DG1Solver(object):
         self.current_step = 0
         self.points_on_ref_int = points_on_ref_int
         # Computed values.
-        self.num_steps = int(np.round(self.total_time / self.dt))
+        self.num_steps = int(round(self.total_time / self.dt))
         self.step_size = 1.0 / self.num_intervals
         self.node_points = get_node_points(
             self.num_intervals, self.p_order,
@@ -544,7 +579,7 @@ class DG1Solver(object):
         :rtype: :class:`numpy.ndarray`
         :returns: The value of the slope function evaluated at ``u_val``.
         """
-        rhs = np.dot(self.stiffness_mat, u_val)
+        rhs = MathProvider.mat_mul(self.stiffness_mat, u_val)
 
         # First we modify
         #    K u^k --> K u^k - up^k ep
@@ -559,8 +594,8 @@ class DG1Solver(object):
         # the final row of ``u`` around to
         #     [up^1, ..., up^{n-1}, up^0]
         # and add it to the first component of ``r``.
-        rhs[0, :] += np.roll(u_val[-1, :], shift=1)
-        return np.linalg.solve(self.mass_mat, rhs)
+        rhs[0, :] += MathProvider.vector_roll(u_val[-1, :], shift=1)
+        return MathProvider.solve(self.mass_mat, rhs)
 
     def update(self):
         r"""Update the solution for a single time step.
