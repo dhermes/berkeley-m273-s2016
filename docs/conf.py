@@ -135,7 +135,7 @@ todo_include_todos = False
 
 # -- Options for HTML output ----------------------------------------------
 
-# We fake our imports when readthedocs.org is building the docs.
+# We fake our more expensive imports when building the docs.
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # We want to set the RTD theme, but not if we're on RTD.
