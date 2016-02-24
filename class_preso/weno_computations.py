@@ -10,11 +10,16 @@ Slides can be seen on `nbviewer`_.
 
 from __future__ import print_function
 
+# pylint: disable=wrong-import-order
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn
 import six
 import sympy
+# pylint: enable=wrong-import-order
+# NOTE: The import order fails on Travis but I can't reproduce locally.
+#       This seems to be a confusion about the order of precedence
+#       1. std lib 2. external libs 3. projects modules.
 
 
 def to_latex(value, replace_dict):
