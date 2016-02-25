@@ -29,7 +29,14 @@ class MathProvider(object):
 
     The module assumes through-out that solution data is in NumPy arrays,
     but the data inside those arrays may be any type.
+
+    .. note::
+
+       The callers assume :data:`exp_func` is a vectorized exponential
+       that can act on a NumPy array containing elements of the relevant
+       type.
     """
+    exp_func = staticmethod(np.exp)
     linspace = staticmethod(np.linspace)
     num_type = staticmethod(float)
     mat_inv = staticmethod(np.linalg.inv)
@@ -442,18 +449,13 @@ def get_gaussian_like_initial_data(node_points):
        u(x, 0) = \exp\left(-\left(\frac{x - \frac{1}{2}}{0.1}
                              \right)^2\right)
 
-    .. note::
-
-       This method is **not** generic enough to accommodate non-NumPy
-       types as it relies on the vectorized :data:`numpy.exp`.
-
     :type node_points: :class:`numpy.ndarray`
     :param node_points: Points at which evaluate the initial data function.
 
     :rtype: :class:`numpy.ndarray`
     :returns: The :math:`u`-values at each node point.
     """
-    return np.exp(-(node_points - 0.5)**2 / 0.01)
+    return MathProvider.exp_func(- 25 * (2 * node_points - 1)**2)
 
 
 class DG1Solver(object):
