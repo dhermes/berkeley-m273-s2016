@@ -45,7 +45,6 @@ class MathProvider(object):
     linspace = staticmethod(np.linspace)
     num_type = staticmethod(float)
     mat_inv = staticmethod(np.linalg.inv)
-    mat_mul = staticmethod(np.dot)
     solve = staticmethod(np.linalg.solve)
     zeros = staticmethod(np.zeros)
 # pylint: enable=too-few-public-methods
@@ -584,7 +583,12 @@ class DG1Solver(object):
         :rtype: :class:`numpy.ndarray`
         :returns: The value of the slope function evaluated at ``u_val``.
         """
-        rhs = MathProvider.mat_mul(self.stiffness_mat, u_val)
+        # NOTE: Assumes ``stiffness_mat`` and ``u_val`` are NumPy arrays.
+        #       In NumPy, MATMUL tries to use CBLAS if the data type is
+        #       NPY_FLOAT/NPY_CFLOAT/NPY_DOUBLE/NPY_CDOUBLE and if not
+        #       it falls back to the naive way of computing the product
+        #       element-wise.
+        rhs = np.dot(self.stiffness_mat, u_val)
 
         # First we modify
         #    K u^k --> K u^k - up^k ep
