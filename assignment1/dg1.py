@@ -35,6 +35,11 @@ class MathProvider(object):
        The callers assume :data:`exp_func` is a vectorized exponential
        that can act on a NumPy array containing elements of the relevant
        type.
+
+    .. note::
+
+       The :data:`zeros` constructor should also be able to take the
+       ``order`` argument (and should produce a NumPy array).
     """
     exp_func = staticmethod(np.exp)
     linspace = staticmethod(np.linspace)
@@ -133,9 +138,8 @@ def get_legendre_matrix(points, max_degree=None):
     num_points, = np.shape(points)
     if max_degree is None:
         max_degree = num_points - 1
-    # NOTE: As a numpy optimization, one might use Fortran order since the
-    #       algorithm below operates on columns.
-    result = MathProvider.zeros((num_points, max_degree + 1))
+    # Use Fortran order since we operate on columns.
+    result = MathProvider.zeros((num_points, max_degree + 1), order='F')
     result[:, 0] = MathProvider.num_type(1.0)
     result[:, 1] = points
     for degree in six.moves.xrange(2, max_degree + 1):
@@ -312,9 +316,8 @@ def find_matrices(p_order, points_on_ref_int=None):
     coeff_mat = MathProvider.mat_inv(get_legendre_matrix(x_vals))
 
     # Populate the mass and stiffness matrices.
-    # NOTE: We could speed this up by using 2.0 / np.arange(...).
-    legendre_norms = [
-        2.0 / val for val in six.moves.xrange(1, 2 * p_order + 2, 2)]
+    legendre_norms = (MathProvider.num_type(2.0) /
+                      np.arange(1, 2 * p_order + 2, 2))
     mass_mat = MathProvider.zeros((p_order + 1, p_order + 1))
     stiffness_mat = MathProvider.zeros((p_order + 1, p_order + 1))
     for i in six.moves.xrange(p_order + 1):
@@ -428,15 +431,10 @@ def get_node_points(num_points, p_order, step_size=None,
     interval_starts = MathProvider.linspace(0, 1 - step_size, num_points)
     # Split the first interval [0, h] in ``p_order + 1`` points.
     first_interval = points_on_ref_int(0, step_size, p_order + 1)
-    # NOTE: We could make this more efficient by using numpy broadcasting
-    #       with ``first_interval`` as rows and columns as
-    #       ``interval_starts``.
-    result = MathProvider.zeros((p_order + 1, num_points))
-    for row in six.moves.xrange(p_order + 1):
-        left_val = first_interval[row]
-        for col in six.moves.xrange(num_points):
-            result[row, col] = left_val + interval_starts[col]
-    return result
+    # Broadcast the values with ``first_interval`` as rows and
+    # columns as ``interval_starts``.
+    return (first_interval[:, np.newaxis] +
+            interval_starts[np.newaxis, :])
 
 
 def get_gaussian_like_initial_data(node_points):
