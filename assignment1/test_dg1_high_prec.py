@@ -210,7 +210,7 @@ class TestHighPrecProvider(unittest.TestCase):
             self.assertTrue(np.all(result == solution))
 
         id_left = id(left_mat)
-        self.assertEqual(klass._solve_lu_cache.keys(), [id_left])
+        self.assertEqual(list(klass._solve_lu_cache.keys()), [id_left])
         cached_values = klass._solve_lu_cache[id_left]
 
         lu_parts = np.array([

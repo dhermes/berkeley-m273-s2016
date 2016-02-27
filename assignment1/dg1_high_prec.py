@@ -140,6 +140,23 @@ class HighPrecProvider(object):
         to limitations of :mod:`mpmath` we use modified helpers to
         accomplish the upper- and lower-triangular solves. We also cache
         the LU-factorization for future uses.
+
+        It's worth pointing out that :func:`numpy.linalg.solve` works in
+        exactly this fashion. From the `C source`_ there is a
+        ``lapack_func`` that gets defined and is eventually used
+        `in Python`_ as ``gufunc``. Notice that the ``lapack_func`` is
+        ``dgesv`` for doubles. Checking the `LAPACK docs`_ verifies
+        the ``dgesv`` does an LU and then two triangular solves.
+
+        .. _C source: https://github.com/numpy/numpy/blob/\
+                      4123a2d55c353e71f665712b4de578f933bd4135/numpy/\
+                      linalg/umath_linalg.c.src#L1579
+        .. _in Python: https://github.com/numpy/numpy/blob/\
+                       4123a2d55c353e71f665712b4de578f933bd4135/\
+                       numpy/linalg/linalg.py#L384
+        .. _LAPACK docs: http://www.netlib.org/lapack/explore-html/d7/d3b/\
+                         group__double_g_esolve.html\
+                         #ga5ee879032a8365897c3ba91e3dc8d512
         """
         left_mat_id = id(left_mat)
         if left_mat_id not in cls._solve_lu_cache:

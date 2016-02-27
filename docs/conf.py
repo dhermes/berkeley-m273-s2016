@@ -31,6 +31,7 @@ class Mock(mock.Mock):
 MOCK_MODULES = (
     'matplotlib',
     'matplotlib.pyplot',
+    'mpmath',
     'numpy',
     'numpy.polynomial',
     'numpy.polynomial.legendre',
