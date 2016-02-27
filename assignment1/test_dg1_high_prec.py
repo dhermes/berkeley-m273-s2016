@@ -1,7 +1,84 @@
 import unittest
 
+import mock
+
+
+class Test__forward_substitution(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(lower_tri, rhs_mat, pivots):
+        from assignment1.dg1_high_prec import _forward_substitution
+        return _forward_substitution(lower_tri, rhs_mat, pivots)
+
+    def test_it(self):
+        import mpmath
+        import numpy as np
+
+        pivots = [1, 2]
+        left_mat = np.array([
+            [mpmath.mpf('1.0'), mpmath.mpf('0.0'), mpmath.mpf('0.0')],
+            [mpmath.mpf('2.0'), mpmath.mpf('1.0'), mpmath.mpf('0.0')],
+            [mpmath.mpf('0.0'), mpmath.mpf('-1.0'), mpmath.mpf('1.0')],
+        ])
+        # Start with a known solution and work backwards.
+        solution = np.array([
+            [mpmath.mpf('2.0'), mpmath.mpf('0.0')],
+            [mpmath.mpf('-1.0'), mpmath.mpf('-1.0')],
+            [mpmath.mpf('0.0'), mpmath.mpf('4.0')],
+        ])
+        # Compute the corresponding RHS.
+        rhs_mat = left_mat.dot(solution)
+        # Apply the pivots in reverse (i.e. to un-pivot).
+        for index in (1, 0):
+            pivot_val = pivots[index]
+            rhs_mat[[index, pivot_val], :] = rhs_mat[[pivot_val, index], :]
+
+        with mpmath.mp.workprec(100):
+            result = self._call_func_under_test(left_mat, rhs_mat, pivots)
+            self.assertIsInstance(result, np.ndarray)
+            self.assertEqual(result.shape, rhs_mat.shape)
+            self.assertTrue(np.all(result == solution))
+
+
+class Test__back_substitution(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(upper_tri, rhs_mat):
+        from assignment1.dg1_high_prec import _back_substitution
+        return _back_substitution(upper_tri, rhs_mat)
+
+
+    def test_it(self):
+        import mpmath
+        import numpy as np
+
+        left_mat = np.array([
+            [mpmath.mpf('3.0'), mpmath.mpf('4.0'), mpmath.mpf('5.0')],
+            [mpmath.mpf('0.0'), mpmath.mpf('-1.0'), mpmath.mpf('1.0')],
+            [mpmath.mpf('0.0'), mpmath.mpf('0.0'), mpmath.mpf('3.0')],
+        ])
+        # Start with a known solution and work backwards.
+        solution = np.array([
+            [mpmath.mpf('4.0'), mpmath.mpf('9.0')],
+            [mpmath.mpf('2.0'), mpmath.mpf('1.0')],
+            [mpmath.mpf('0.0'), mpmath.mpf('1.0')],
+        ])
+        # Compute the corresponding RHS.
+        rhs_mat = left_mat.dot(solution)
+
+        with mpmath.mp.workprec(100):
+            result = self._call_func_under_test(left_mat, rhs_mat)
+            self.assertIsInstance(result, np.ndarray)
+            self.assertEqual(result.shape, rhs_mat.shape)
+            self.assertTrue(np.all(result == solution))
+
 
 class TestHighPrecProvider(unittest.TestCase):
+
+    def setUp(self):
+        # Clean out the solve() LU cache.
+        klass = self._get_target_class()
+        klass._solve_lu_cache.clear()
 
     @staticmethod
     def _get_target_class():
@@ -82,9 +159,77 @@ class TestHighPrecProvider(unittest.TestCase):
         self.assertLess(np.max(delta), 1e-10)
 
     def test_solve(self):
+        import mpmath
+        import numpy as np
+
         solve = self._get_target_class().solve
-        with self.assertRaises(NotImplementedError):
-            solve(None, None)
+        left_mat = np.array([
+            [mpmath.mpf('0.0'), mpmath.mpf('1.0'), mpmath.mpf('2.0')],
+            [mpmath.mpf('3.0'), mpmath.mpf('4.0'), mpmath.mpf('5.0')],
+            [mpmath.mpf('6.0'), mpmath.mpf('7.0'), mpmath.mpf('11.0')],
+        ])
+        # Start with a known solution and work backwards.
+        solution = np.array([
+            [mpmath.mpf('2.0'), mpmath.mpf('0.0')],
+            [mpmath.mpf('-1.0'), mpmath.mpf('-1.0')],
+            [mpmath.mpf('0.0'), mpmath.mpf('4.0')],
+        ])
+        # Compute the corresponding RHS.
+        right_mat = left_mat.dot(solution)
+
+        with mpmath.mp.workprec(100):
+            result = solve(left_mat, right_mat)
+            self.assertIsInstance(result, np.ndarray)
+            self.assertEqual(result.shape, right_mat.shape)
+            self.assertTrue(np.all(result == solution))
+
+    def test_solve_cache(self):
+        import mpmath
+        import numpy as np
+
+        klass = self._get_target_class()
+        left_mat = np.array([
+            [mpmath.mpf('0.0'), mpmath.mpf('1.0'), mpmath.mpf('2.0')],
+            [mpmath.mpf('3.0'), mpmath.mpf('4.0'), mpmath.mpf('5.0')],
+            [mpmath.mpf('6.0'), mpmath.mpf('7.0'), mpmath.mpf('11.0')],
+        ])
+        # Start with a known solution and work backwards.
+        solution = np.array([
+            [mpmath.mpf('2.0'), mpmath.mpf('0.0')],
+            [mpmath.mpf('-1.0'), mpmath.mpf('-1.0')],
+            [mpmath.mpf('0.0'), mpmath.mpf('4.0')],
+        ])
+        # Compute the corresponding RHS.
+        right_mat = left_mat.dot(solution)
+
+        self.assertEqual(klass._solve_lu_cache, {})
+        with mpmath.mp.workprec(100):
+            result = klass.solve(left_mat, right_mat)
+            self.assertIsInstance(result, np.ndarray)
+            self.assertEqual(result.shape, right_mat.shape)
+            self.assertTrue(np.all(result == solution))
+
+        id_left = id(left_mat)
+        self.assertEqual(klass._solve_lu_cache.keys(), [id_left])
+        cached_values = klass._solve_lu_cache[id_left]
+
+        lu_parts = np.array([
+            [mpmath.mpf('3.0'), mpmath.mpf('4.0'), mpmath.mpf('5.0')],
+            [mpmath.mpf('2.0'), mpmath.mpf('-1.0'), mpmath.mpf('1.0')],
+            [mpmath.mpf('0.0'), mpmath.mpf('-1.0'), mpmath.mpf('3.0')],
+        ])
+        self.assertTrue(np.all(cached_values[0] == lu_parts))
+        pivots = [1, 2]
+        self.assertEqual(cached_values[1], pivots)
+
+        # Call solve() again and verify that LU_decomp() is never used.
+        with mock.patch('mpmath.mp.LU_decomp') as lu_decomp:
+            with mpmath.mp.workprec(100):
+                result = klass.solve(left_mat, right_mat)
+                self.assertIsInstance(result, np.ndarray)
+                self.assertEqual(result.shape, right_mat.shape)
+                self.assertTrue(np.all(result == solution))
+            lu_decomp.assert_not_called()
 
     def test_zeros(self):
         import mpmath
