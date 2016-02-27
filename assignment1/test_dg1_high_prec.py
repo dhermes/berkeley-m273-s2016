@@ -77,7 +77,9 @@ class TestHighPrecProvider(unittest.TestCase):
     def setUp(self):
         # Clean out the solve() LU cache.
         klass = self._get_target_class()
+        # pylint: disable=protected-access
         klass._solve_lu_cache.clear()
+        # pylint: enable=protected-access
 
     @staticmethod
     def _get_target_class():
@@ -201,7 +203,9 @@ class TestHighPrecProvider(unittest.TestCase):
         # Compute the corresponding RHS.
         right_mat = left_mat.dot(solution)
 
+        # pylint: disable=protected-access
         self.assertEqual(klass._solve_lu_cache, {})
+        # pylint: enable=protected-access
         with mpmath.mp.workprec(100):
             result = klass.solve(left_mat, right_mat)
             self.assertIsInstance(result, np.ndarray)
@@ -209,8 +213,10 @@ class TestHighPrecProvider(unittest.TestCase):
             self.assertTrue(np.all(result == solution))
 
         id_left = id(left_mat)
+        # pylint: disable=protected-access
         self.assertEqual(list(klass._solve_lu_cache.keys()), [id_left])
         cached_values = klass._solve_lu_cache[id_left]
+        # pylint: enable=protected-access
 
         lu_parts = np.array([
             [mpmath.mpf('3.0'), mpmath.mpf('4.0'), mpmath.mpf('5.0')],
