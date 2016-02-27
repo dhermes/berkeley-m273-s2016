@@ -5,6 +5,7 @@ from setuptools import find_packages
 
 
 REQUIREMENTS = (
+    'mpmath',
     'numpy',
     'six >= 1.6.1',
     'sympy',
