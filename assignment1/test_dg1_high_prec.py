@@ -47,7 +47,6 @@ class Test__back_substitution(unittest.TestCase):
         from assignment1.dg1_high_prec import _back_substitution
         return _back_substitution(upper_tri, rhs_mat)
 
-
     def test_it(self):
         import mpmath
         import numpy as np
