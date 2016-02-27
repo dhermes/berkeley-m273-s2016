@@ -107,3 +107,26 @@ class TestHighPrecProvider(unittest.TestCase):
         all_types = set([type(val) for val in mat2.flatten()])
         self.assertEqual(all_types, set([mpmath.mpf]))
         self.assertTrue(mat2.flags.f_contiguous)
+
+
+class Test_gauss_lobatto_points(unittest.TestCase):
+
+    @staticmethod
+    def _call_func_under_test(start, stop, num_points):
+        from assignment1.dg1_high_prec import gauss_lobatto_points
+        return gauss_lobatto_points(start, stop, num_points)
+
+    def test_it(self):
+        import mpmath
+        import numpy as np
+        from assignment1.dg1 import gauss_lobatto_points as low_prec
+
+        with mpmath.mp.workprec(100):
+            result1 = low_prec(-1, 1, 5)
+            result2 = self._call_func_under_test(-1, 1, 5)
+            self.assertTrue(np.allclose(result1, result2.astype(float)))
+
+            result3 = low_prec(3, 7, 19)
+            result4 = self._call_func_under_test(
+                mpmath.mpf('3'), mpmath.mpf('7'), 19)
+            self.assertTrue(np.allclose(result3, result4.astype(float)))
