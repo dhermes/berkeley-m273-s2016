@@ -1,0 +1,499 @@
+\documentclass[letterpaper,10pt]{article}
+
+\usepackage[margin=1in]{geometry}
+
+\usepackage{amsthm,amssymb,amsmath,tikz}
+\usetikzlibrary{decorations.markings}
+
+\usepackage{embedfile}
+\embedfile{\jobname.tex}
+
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,urlcolor=blue}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\lhead{}
+\rhead{2D Conservation Law Schemes}
+
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\qed}{\(\blacksquare\)}
+
+\begin{document}
+Note that for a vector valued \(\mathbf{F}\left(\mathbf{x}\right)\) and
+a scalar \(v\left(\mathbf{x}\right)\) we have a sort of product rule for
+divergence:
+\[\nabla \cdot \left(v\mathbf{F}\right) = \nabla v \cdot \mathbf{F} +
+v \left(\nabla \cdot \mathbf{F}\right).\]
+Thus a weak solution \(u\) of
+\[u_t + \nabla \cdot \mathbf{F} = 0\]
+must satisfy
+\[\int_{\Omega} u_t v \, dV =
+-\int_{\Omega} v \left(\nabla \cdot \mathbf{F}\right) \, dV =
+\int_{\Omega} \nabla v \cdot \mathbf{F} -
+\nabla \cdot \left(v\mathbf{F}\right) \, dV =
+\int_{\Omega} \nabla v \cdot \mathbf{F} \, dV -
+\int_{\partial \Omega} \left(v\mathbf{F}\right) \cdot \mathbf{n} \, dS.\]
+
+We are considering the ``rotating flux'' function
+\[\mathbf{F} = u \left[ \begin{array}{c} -y \\ x
+\end{array}\right]\]
+on the domain \((x, y) \in \left[-1, 1\right]^2\) with initial
+condition
+\[u(x, y, 0) = \frac{1}{2\pi \cdot \frac{1}{8}^2} \exp\left(
+\frac{\left(x - \frac{1}{2}\right)^2 + y^2}{\frac{1}{8}^2}\right)\]
+and boundary conditions
+\[u(x, -1, t) = u(x, 1, t) = u(-1, y, t) = u(1, y, t) = 0.\]
+
+Now our test functions must satisfy
+\[\int_{\Omega} u_t v \, dV =
+\int_{\Omega} u\left(-y v_x + x v_y\right) \, dV -
+\int_{\partial \Omega} uv \left(-y n_x + x n_y\right) \, dS.\]
+To use DG to solve this problem, our test functions and components
+of \(u\) will be degree \(p\) polynomials hence
+\(u\left(-y v_x + x v_y\right)\) is degree \(2p\) and
+\(uv \left(-y n_x + x n_y\right)\) is degree \(2p + 1\).
+
+To make this concrete, we'll consider \(p = 1\). The quadrature
+rule
+\[\int_T f\left(\mathbf{x}\right) \, d\mathbf{x} \approx
+\frac{\left|T\right|}{3}
+\left[f\left(\frac{C + v_0}{2}\right) +
+f\left(\frac{C + v_1}{2}\right) +
+f\left(\frac{C + v_2}{2}\right)\right]\]
+is exact for quadratics (here \(C = \frac{v_0 + v_1 + v_2}{3}\) is
+the centroid of \(T\)).
+
+On each directed edge of \(\partial T\), we have a parameterization
+\(\gamma(s) = v_i + \frac{s + 1}{2}(v_{i + 1} - v_i)\). Writing
+\(v_{i + 1} - v_i = \left[ \begin{array}{c} \Delta x_i \\ \Delta y_i
+\end{array}\right]\) we have an outward\footnote{one can
+check that the cross product
+\(\mathbf{n}_i \times (v_{i + 1} - v_i) = \frac{\Delta x_i^2 +
+\Delta y_i^2}{\left|v_{i + 1} - v_i\right|}\) points in the positive
+\(z\)-direction} normal given by
+\(\mathbf{n}_i = \frac{1}{\left|v_{i + 1} - v_i\right|} \left[
+\begin{array}{c} \Delta y_i \\ -\Delta x_i \end{array}\right]\) hence
+\[\int_{\gamma} \left[ \begin{array}{c} f \\ g \end{array}\right]
+\cdot \mathbf{n}_i \, dS =
+\int_{-1}^1 \frac{f\left(\gamma(s)\right) \Delta y_i -
+g\left(\gamma(s)\right) \Delta x_i}{
+\left|v_{i + 1} - v_i\right|} \left|\gamma'(s)\right| \, ds =
+\int_{-1}^1 \frac{f\left(\gamma(s)\right) \Delta y_i -
+g\left(\gamma(s)\right) \Delta x_i}{2} \, ds.\]
+So if \(f, g\) are cubics, the Gaussian quadrature
+\begin{align*}
+\int_{-1}^1 \frac{f\left(\gamma(s)\right) \Delta y_i -
+g\left(\gamma(s)\right) \Delta x_i}{2} \, ds &\approx
+\frac{f\left(\gamma\left(-1 / \sqrt{3}\right)\right) \Delta y_i -
+g\left(\gamma\left(-1 / \sqrt{3}\right)\right) \Delta x_i}{2} \\
+&+ \frac{f\left(\gamma\left(1 / \sqrt{3}\right)\right) \Delta y_i -
+g\left(\gamma\left(1 / \sqrt{3}\right)\right) \Delta x_i}{2}
+\end{align*}
+is exact. For our given function we have
+\[2\int_{\gamma} vu \left[ \begin{array}{c} -y \\ x \end{array}\right]
+\cdot \mathbf{n} \, dS \approx
+-uv \left(\gamma\left(-\frac{1}{\sqrt{3}}\right)
+\cdot \Delta v_i\right)
+- uv \left(\gamma\left(\frac{1}{\sqrt{3}}\right)
+\cdot \Delta v_i\right).\]
+
+On a given triangular element \(T\) with (ordered, local) vertices
+\(v_0, v_1, v_2\) we have a map
+\[R(x, y) = (1 - x - y) v_0 + x v_1 + y v_2\]
+from the reference triangle \(T_0\) to \(T\), with this
+\[\int_{R(T_0)} f \, dV = \int_{T_0} f(R(\mathbf{x}))
+\left|\det J\right| \,d \mathbf{x}.\]
+Note that \(\left|\det J\right| = 2\left|T\right|\). For identity
+functions \(\varphi_i\) such that \(\varphi_i(v_j) = \delta_{ij}\),
+we must have \(\varphi_i\left(R\left(v_j^{(0)}\right)\right) =
+\delta_{ij}\) (where \(v_j^{(0)}\) are the nodes of the reference
+triangle) hence we must have \(\varphi_0\left(R(x, y)\right) = 1 - x - y\),
+\(\varphi_1\left(R(x, y)\right) = x\) and
+\(\varphi_2\left(R(x, y)\right) = y\) by uniqueness of these ``hat''
+functions.
+
+For \(u_t = \dot{u}_0 \varphi_0 + \dot{u}_1 \varphi_1 + \dot{u}_2 \varphi_2\)
+(again in local indices) we have
+\[\int_T u_t \left[ \begin{array}{c}
+\varphi_0 \\ \varphi_1 \\ \varphi_2 \end{array}\right] \, dV =
+\frac{\left|T\right|}{12} \left[ \begin{array}{c c c}
+2 & 1 & 1 \\
+1 & 2 & 1 \\
+1 & 1 & 2 \end{array}\right] \left[ \begin{array}{c}
+\dot{u}_0 \\ \dot{u}_1 \\ \dot{u}_2 \end{array}\right] \Longrightarrow
+M_T^{-1} = \frac{3}{\left|T\right|} \left[ \begin{array}{c c c}
+ 3 & -1 & -1 \\
+-1 &  3 & -1 \\
+-1 & -1 &  3 \end{array}\right].\]
+One can show that in the \(p = 1\) case
+\[\left[ \begin{array}{c c}
+\frac{\partial \varphi_i}{\partial x} &
+\frac{\partial \varphi_i}{\partial y}
+\end{array}\right] =
+\frac{1}{2\left|T\right|} \left[ \begin{array}{c c}
+-\Delta y_1 & \Delta x_1 \\
+-\Delta y_2 & \Delta x_2 \\
+-\Delta y_0 & \Delta x_0
+\end{array}\right]\]
+we can write the quadrature points as
+\[\left[ \begin{array}{c c c}
+q_0 & q_1 & q_2
+\end{array}\right]
+= \frac{1}{6} \left[ \begin{array}{c c c}
+x_0 & x_1 & x_2 \\
+y_0 & y_1 & y_2
+\end{array}\right] \left[ \begin{array}{c c c}
+4 & 1 & 1 \\
+1 & 4 & 1 \\
+1 & 1 & 4
+\end{array}\right]\]
+hence computing
+\[g_i = -y \frac{\partial \varphi_i}{\partial x} +
+x \frac{\partial \varphi_i}{\partial y}\]
+at each of these three points can be accomplished via
+\begin{align*}
+G = \left[ \begin{array}{c} g_i\left(q_j\right) \end{array}\right]
+&= \frac{1}{12\left|T\right|} \left[ \begin{array}{c c}
+-\Delta y_1 & \Delta x_1 \\
+-\Delta y_2 & \Delta x_2 \\
+-\Delta y_0 & \Delta x_0
+\end{array}\right] \left[ \begin{array}{c c c}
+-y_0 & -y_1 & -y_2 \\
+x_0 & x_1 & x_2
+\end{array}\right] \left[ \begin{array}{c c c}
+4 & 1 & 1 \\
+1 & 4 & 1 \\
+1 & 1 & 4
+\end{array}\right] \\
+&= \frac{1}{12\left|T\right|} \left[ \begin{array}{c c c}
+\Delta v_1 & \Delta v_2 & \Delta v_0
+\end{array}\right]^T \left[ \begin{array}{c c c}
+v_0 & v_1 & v_2
+\end{array}\right] \left[ \begin{array}{c c c}
+4 & 1 & 1 \\
+1 & 4 & 1 \\
+1 & 1 & 4
+\end{array}\right]
+\end{align*}
+We combine this with
+\[Q = \left[ \begin{array}{c} \varphi_i\left(q_j\right)
+\end{array}\right] =
+\frac{1}{6} \left[ \begin{array}{c c c}
+4 & 1 & 1 \\
+1 & 4 & 1 \\
+1 & 1 & 4
+\end{array}\right]\]
+to compute
+\[\int_{T} \varphi_j \left(-y \frac{\partial \varphi_i}{\partial x} +
+x \frac{\partial \varphi_i}{\partial y}\right) \, dV =
+\frac{\left|T\right|}{3} \sum_{k = 0}^2 \varphi_j(q_k) g_i(q_k).\]
+This corresponds to taking the dot product of row \(j\) of \(Q\)
+with row \(i\) of \(G\). But, due to the
+symmetry of \(Q\) these \(9\) values actually occur in
+\[K = \frac{1}{6} \left[ \begin{array}{c c c}
+\Delta v_1 & \Delta v_2 & \Delta v_0
+\end{array}\right]^T \left[ \begin{array}{c c c}
+v_0 & v_1 & v_2
+\end{array}\right] Q^2\]
+Thus far, we have
+\[\left|T\right| M \left[ \begin{array}{c}
+\dot{u}_0 \\ \dot{u}_1 \\ \dot{u}_2 \end{array}\right] =
+K \left[ \begin{array}{c}
+u_0 \\ u_1 \\ u_2 \end{array}\right] -
+\int_{\partial T} \left(v\mathbf{F}\right) \cdot \mathbf{n} \, dS.\]
+To handle the final integral, we need to utilize a sort of
+``upwind'' condition. We consider
+\[\operatorname{sign}\left(\beta(x, y) \cdot \mathbf{n}_i\right) =
+\operatorname{sign}\left(\left[ \begin{array}{c}
+-y \\ x \end{array}\right] \cdot \left[ \begin{array}{c}
+\Delta y_i \\ -\Delta x_i \end{array}\right]\right) =
+-\operatorname{sign}\left(x \Delta x_i + y \Delta y_i\right) =
+-\operatorname{sign}\left(\gamma(s) \cdot \Delta v_i\right).\]
+If \(\operatorname{sign}\left(\beta(x, y) \cdot \mathbf{n}_i\right)
+> 0\), we use \(u_i\) and \(u_{i + 1}\) to parameterize our line.
+If not, then we use \(u_i^{(i)}\) and \(u_{i + 1}^{(i)}\):
+
+\begin{center}
+\begin{tikzpicture}[scale=3.0]
+\draw[blue, fill=blue] (0.04, 0.04) circle (0.01cm);
+\draw[blue, fill=blue] (0.93, 0.03) circle (0.01cm);
+\draw[blue, fill=blue] (0.03, 0.93) circle (0.01cm);
+\draw (0.1, 0.1) node{\scriptsize{\(u_0\)}};
+\draw (0.8, 0.07) node{\scriptsize{\(u_1\)}};
+\draw (0.07, 0.84) node{\scriptsize{\(u_2\)}};
+
+\draw (0, 0) -- (1, 0);
+\draw (1, 0) -- (0, 1);
+\draw (0, 1) -- (0, 0);
+
+\draw[dashed] (1, 0) -- (1/2, -0.866);
+\draw[dashed] (1/2, -0.866) -- (0, 0);
+\draw[blue, fill=blue] (0.05, -0.03) circle (0.01cm);
+\draw[blue, fill=blue] (0.93, -0.03) circle (0.01cm);
+\draw (0.18, -0.1) node{\scriptsize{\(u_0^{(0)}\)}};
+\draw (0.8, -0.08) node{\scriptsize{\(u_1^{(0)}\)}};
+
+\draw[dashed] (1, 0) -- (1.366, 1.366);
+\draw[dashed] (1.366, 1.366) -- (0, 1);
+\draw[blue, fill=blue] (0.98, 0.07) circle (0.01cm);
+\draw[blue, fill=blue] (0.07, 0.98) circle (0.01cm);
+\draw (0.95, 0.18) node{\scriptsize{\(u_1^{(1)}\)}};
+\draw (0.2, 0.97) node{\scriptsize{\(u_2^{(1)}\)}};
+
+\draw[dashed] (0, 1) -- (-0.866, 1/2);
+\draw[dashed] (-0.866, 1/2) -- (0, 0);
+\draw[blue, fill=blue] (-0.04, 0.07) circle (0.01cm);
+\draw[blue, fill=blue] (-0.03, 0.93) circle (0.01cm);
+\draw (-0.09, 0.83) node{\scriptsize{\(u_2^{(2)}\)}};
+\draw (-0.09, 0.17) node{\scriptsize{\(u_0^{(2)}\)}};
+\end{tikzpicture}
+\end{center}
+
+For example, against the (local) test function \(\varphi_i\)
+\[2 \int_{\left(\partial T\right)_0} \varphi_i u
+\left(\left[ \begin{array}{c} -y \\ x \end{array}\right]
+\cdot \mathbf{n}_0\right) \, dS =
+\left.\varphi_i u^{\pm} \right|_{s=-\frac{1}{\sqrt{3}}}
+\left(-\gamma_{-} \cdot \Delta v_0\right) +
+\left.\varphi_i u^{\pm} \right|_{s=\frac{1}{\sqrt{3}}}
+\left(-\gamma_{+} \cdot \Delta v_0\right).\]
+Each of \(\varphi_i\) and \(u\) are lines, hence linear in
+\(s\), this allows us to simplify
+\[\left.\varphi_0\right|_{\left(\partial T\right)_0} =
+\frac{1 - s}{2}, \quad
+\left.\varphi_1\right|_{\left(\partial T\right)_0} =
+\frac{1 + s}{2}, \quad
+\left.\varphi_2\right|_{\left(\partial T\right)_0} = 0, \quad
+\left.u^{\pm}\right|_{\left(\partial T\right)_0} =
+\frac{1 - s}{2} u_0^{\pm} + \frac{1 + s}{2} u_1^{\pm}\]
+so that
+\begin{align*}
+2 \int_{\left(\partial T\right)_i} \varphi_i u
+\left(\left[ \begin{array}{c} -y \\ x \end{array}\right]
+\cdot \mathbf{n}_i\right) \, dS &=
+\left.\varphi_i u \right|_{s=-\frac{1}{\sqrt{3}}}
+\left(-\gamma_{-} \cdot \Delta v_i\right) +
+\left.\varphi_i u \right|_{s=\frac{1}{\sqrt{3}}}
+\left(-\gamma_{+} \cdot \Delta v_i\right) \\
+&= \kappa_{+} \left(\kappa_{+} u_i + \kappa_{-} u_{i + 1}\right)
+\left(-\gamma_{-} \cdot \Delta v_i\right) +
+\kappa_{-} \left(\kappa_{-} u_i + \kappa_{+} u_{i + 1}\right)
+\left(-\gamma_{+} \cdot \Delta v_i\right) \\
+2 \int_{\left(\partial T\right)_i} \varphi_{i + 1} u
+\left(\left[ \begin{array}{c} -y \\ x \end{array}\right]
+\cdot \mathbf{n}_i\right) \, dS &=
+\left.\varphi_{i + 1} u \right|_{s=-\frac{1}{\sqrt{3}}}
+\left(-\gamma_{-} \cdot \Delta v_i\right) +
+\left.\varphi_{i + 1} u \right|_{s=\frac{1}{\sqrt{3}}}
+\left(-\gamma_{+} \cdot \Delta v_i\right) \\
+&= \kappa_{-} \left(\kappa_{+} u_i + \kappa_{-} u_{i + 1}\right)
+\left(-\gamma_{-} \cdot \Delta v_i\right) +
+\kappa_{+} \left(\kappa_{-} u_i + \kappa_{+} u_{i + 1}\right)
+\left(-\gamma_{+} \cdot \Delta v_i\right) \\
+2 \int_{\left(\partial T\right)_i} \varphi_{i + 2} u
+\left(\left[ \begin{array}{c} -y \\ x \end{array}\right]
+\cdot \mathbf{n}_i\right) \, dS &= 0
+\end{align*}
+where \(\kappa_{\pm} = \frac{1 \pm \frac{1}{\sqrt{3}}}{2}\).
+
+\section{Other Stuff}
+
+For a DG scheme \(p = 1\), we consider the reference triangle \(T\) and
+\[\left.u\right|_T = u_0 \varphi_0 + u_1 \varphi_1 + u_2 \varphi_2, \quad
+\left.u_t\right|_T = \dot{u}_0 \varphi_0 + \dot{u}_1 \varphi_1 +
+\dot{u}_2 \varphi_2\]
+where \(\varphi_0 = 1 - x - y\), \(\varphi_1 = x\) and \(\varphi_2 = y\).
+\[\int_{T} u_t \varphi_i \, dV =
+\dot{u}_0 \int_{T} \varphi_i \varphi_0 \, dV +
+\dot{u}_1 \int_{T} \varphi_i \varphi_1 \, dV +
+\dot{u}_2 \int_{T} \varphi_i \varphi_2 \, dV\]
+where these coefficients are given by the mass matrix
+\[M = \frac{1}{24} \left[ \begin{array}{c c c}
+2 & 1 & 1 \\
+1 & 2 & 1 \\
+1 & 1 & 2 \end{array}\right].\]
+
+We are considering the function
+\[\mathbf{F} = u \left[ \begin{array}{c} -y \\ x
+\end{array}\right]\]
+hence \(\nabla v \cdot \mathbf{F} = v_x(-yu) + v_y(xu) =
+u(x v_y - y v_x)\) and we need to evaluate
+\[\int_{T} \nabla \varphi_i \cdot \mathbf{F} \, dV =
+\sum_{j = 0}^2 u_j \int_{T} \varphi_j \left(
+x \frac{\partial \varphi_i}{\partial y} -
+y \frac{\partial \varphi_i}{\partial x}\right) \, dV\]
+which gives the ``stiffness'' matrix
+\[K = \frac{1}{24} \left[ \begin{array}{c c c}
+0 & -1 & 1 \\
+-1 & -1 & -2 \\
+1 & 2 & 1 \end{array}\right].\]
+As it turns out, each column of \(K\) is an eigenvector of \(M\) with
+the same eigenvalue, hence \(M^{-1} K\) is easy to compute
+(this ``matters'' for future computations).
+
+At this point we have
+\[\frac{1}{24} \left[ \begin{array}{c c c}
+2 & 1 & 1 \\
+1 & 2 & 1 \\
+1 & 1 & 2 \end{array}\right] \left[ \begin{array}{c}
+\dot{u}_0 \\ \dot{u}_1 \\ \dot{u}_2 \end{array}\right] =
+\frac{1}{24} \left[ \begin{array}{c c c}
+0 & -1 & 1 \\
+-1 & -1 & -2 \\
+1 & 2 & 1 \end{array}\right] \left[ \begin{array}{c}
+u_0 \\ u_1 \\ u_2 \end{array}\right] -
+\int_{\partial T} \left(
+\left[ \begin{array}{c}
+\varphi_0 \\ \varphi_1 \\ \varphi_2 \end{array}\right]
+\mathbf{F}\right) \cdot \mathbf{n} \, dS.\]
+
+Along the reference triangle \(T\), we have outward normals given by
+\(\mathbf{n}_0 = \left[ \begin{array}{c}
+0 \\ -1 \end{array}\right]\), \(\mathbf{n}_1 = \frac{1}{\sqrt{2}}
+\left[ \begin{array}{c} 1 \\ 1 \end{array}\right]\) and
+\(\mathbf{n}_2 = \left[ \begin{array}{c}
+-1 \\ 0 \end{array}\right]\).
+
+%% H/T: http://tex.stackexchange.com/questions/39278/tikz-arrowheads-in-the-center
+\tikzset{middlearrow/.style={
+        decoration={markings,
+            mark= at position 0.5 with {\arrow{#1}} ,
+        },
+        postaction={decorate}
+    }
+}
+
+\begin{center}
+\begin{tikzpicture}[scale=3.0]
+\draw[fill=black] (0, 0) circle (0.02cm);
+\draw[fill=black] (1, 0) circle (0.02cm);
+\draw[fill=black] (0, 1) circle (0.02cm);
+
+\draw[middlearrow={latex}] (0, 0) -- (1, 0);
+\draw[middlearrow={latex}] (1, 0) -- (0, 1);
+\draw[middlearrow={latex}] (0, 1) -- (0, 0);
+
+\draw (-0.1, -0.1) node{\scriptsize{\(v_0\)}};
+\draw (1.1, -0.1) node{\scriptsize{\(v_1\)}};
+\draw (-0.1, 1.1) node{\scriptsize{\(v_2\)}};
+
+\draw (0.5, -0.2) node{\scriptsize{\(\gamma_0 =
+\left[ \begin{array}{c} s \\ 0 \end{array}\right]\)}};
+\draw (0.8, 0.6) node{\scriptsize{\(\gamma_1 =
+\left[ \begin{array}{c} 1 - s \\ s \end{array}\right]\)}};
+\draw (-0.35, 0.5) node{\scriptsize{\(\gamma_2 =
+\left[ \begin{array}{c} 0 \\ 1 - s \end{array}\right]\)}};
+\end{tikzpicture}
+\end{center}
+The final integral (noting that \(\varphi_i \mathbf{F} =
+\varphi_i u \left[ \begin{array}{c} -y \\ x \end{array}\right]\))
+becomes
+\begin{align*}
+\int_{\partial T} \left(\varphi_i
+\mathbf{F}\right) \cdot \mathbf{n} \, dS &=
+\int_0^1 \left(\varphi_i \mathbf{F}\right) \cdot \mathbf{n}_0
+\left|\gamma_0'(s)\right| \, ds + \cdots \\
+&= \int_0^1 - \varphi_i x(s) u \, ds +
+\sqrt{2} \int_0^1 \varphi_i u \frac{x(s) - y(s)}{\sqrt{2}} \, ds +
+\int_0^1 \varphi_i y(s) u \, ds.
+\end{align*}
+and computing this integrals we see
+\begin{align*}
+\int_{\partial T} \left(
+\left[ \begin{array}{c}
+\varphi_0 \\ \varphi_1 \\ \varphi_2 \end{array}\right]
+\mathbf{F}\right) \cdot \mathbf{n} \, dS &=
+\left(\frac{1}{12} \left[ \begin{array}{c c c}
+-1 & -1 & 0 \\
+-1 & -3 & 0 \\
+ 0 &  0 & 0
+\end{array}\right] +
+\frac{1}{6} \left[ \begin{array}{c c c}
+0 & 0 &  0 \\
+0 & 1 &  0 \\
+0 & 0 & -1
+\end{array}\right] +
+\frac{1}{12} \left[ \begin{array}{c c c}
+1 & 0 & 1 \\
+0 & 0 & 0 \\
+1 & 0 & 3
+\end{array}\right]\right)
+\left[ \begin{array}{c}
+u_0 \\ u_1 \\ u_2 \end{array}\right] \\
+&= \left(G_0 + G_1 + G_2\right)
+\left[ \begin{array}{c}
+u_0 \\ u_1 \\ u_2 \end{array}\right].
+\end{align*}
+Rather than use the values \(u_0, u_1, u_2\) in \(T\), we instead
+``reach across'' the edges of \(T\) as a sort of upwind condition:
+
+\begin{center}
+\begin{tikzpicture}[scale=3.0]
+\draw[blue, fill=blue] (0.04, 0.04) circle (0.01cm);
+\draw[blue, fill=blue] (0.93, 0.03) circle (0.01cm);
+\draw[blue, fill=blue] (0.03, 0.93) circle (0.01cm);
+\draw (0.1, 0.1) node{\scriptsize{\(u_0\)}};
+\draw (0.8, 0.07) node{\scriptsize{\(u_1\)}};
+\draw (0.07, 0.84) node{\scriptsize{\(u_2\)}};
+
+\draw (0, 0) -- (1, 0);
+\draw (1, 0) -- (0, 1);
+\draw (0, 1) -- (0, 0);
+
+\draw[dashed] (1, 0) -- (1/2, -0.866);
+\draw[dashed] (1/2, -0.866) -- (0, 0);
+\draw[blue, fill=blue] (0.05, -0.03) circle (0.01cm);
+\draw[blue, fill=blue] (0.93, -0.03) circle (0.01cm);
+\draw (0.18, -0.1) node{\scriptsize{\(u_0^{(0)}\)}};
+\draw (0.8, -0.08) node{\scriptsize{\(u_1^{(0)}\)}};
+
+\draw[dashed] (1, 0) -- (1.366, 1.366);
+\draw[dashed] (1.366, 1.366) -- (0, 1);
+\draw[blue, fill=blue] (0.98, 0.07) circle (0.01cm);
+\draw[blue, fill=blue] (0.07, 0.98) circle (0.01cm);
+\draw (0.95, 0.18) node{\scriptsize{\(u_1^{(1)}\)}};
+\draw (0.2, 0.97) node{\scriptsize{\(u_2^{(1)}\)}};
+
+\draw[dashed] (0, 1) -- (-0.866, 1/2);
+\draw[dashed] (-0.866, 1/2) -- (0, 0);
+\draw[blue, fill=blue] (-0.04, 0.07) circle (0.01cm);
+\draw[blue, fill=blue] (-0.03, 0.93) circle (0.01cm);
+\draw (-0.09, 0.83) node{\scriptsize{\(u_2^{(2)}\)}};
+\draw (-0.09, 0.17) node{\scriptsize{\(u_0^{(2)}\)}};
+\end{tikzpicture}
+\end{center}
+All together, the update condition becomes
+\[M \left[ \begin{array}{c}
+\dot{u}_0 \\ \dot{u}_1 \\ \dot{u}_2 \end{array}\right] = K
+\left[ \begin{array}{c}
+u_0 \\ u_1 \\ u_2 \end{array}\right] -
+G_0 \left[ \begin{array}{c}
+u_0^{(0)} \\ u_1^{(0)} \\ 0 \end{array}\right] -
+G_1 \left[ \begin{array}{c}
+0 \\ u_1^{(1)} \\ u_2^{(1)} \end{array}\right] -
+G_2 \left[ \begin{array}{c}
+u_0^{(2)} \\ 0 \\ u_2^{(2)} \end{array}\right].\]
+In order to reduce the complexity of the computation, we produce here
+\begin{align*}
+M^{-1} K = 24K &= \left[ \begin{array}{c c c}
+ 0 & -1 &  1 \\
+-1 & -1 & -2 \\
+ 1 &  2 &  1 \end{array}\right] \\
+M^{-1} G_0 &= \left[ \begin{array}{c c c}
+-1 &  0 & 0 \\
+-1 & -4 & 0 \\
+ 1 &  2 & 0 \end{array}\right] \\
+M^{-1} G_1 &= \left[ \begin{array}{c c c}
+0 & -1 &  1 \\
+0 &  3 &  1 \\
+0 & -1 & -3 \end{array}\right] \\
+M^{-1} G_2 &= \left[ \begin{array}{c c c}
+ 1 & 0 &  0 \\
+-1 & 0 & -2 \\
+ 1 & 0 &  4 \end{array}\right].
+\end{align*}
+For boundary edges, where there is no other triangle ``across the edge'',
+we use the boundary condition.
+
+\end{document}
